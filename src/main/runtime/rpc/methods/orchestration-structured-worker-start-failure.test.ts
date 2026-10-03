@@ -11,6 +11,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
 import type { OrcaRuntimeService } from '../../orca-runtime'
 import type { OrchestrationDb } from '../../orchestration/db'
+import { capacityEvidence } from '../../../../shared/orchestration-run-capacity.test-support'
+
+vi.mock('../../orchestration/run-capacity-state', () => ({
+  requireRunCapacity: () => capacityEvidence()
+}))
 import { structuredWorkerIdentities } from '../../structured-worker-identity'
 
 vi.mock('./structured-agent-session-create', () => ({

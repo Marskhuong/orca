@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from '../../capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from '../../db'
+import type { OrchestrationDb } from '../../db'
 
 describe('federated Dispatch observation fence', () => {
   let db: OrchestrationDb | undefined
@@ -7,7 +8,7 @@ describe('federated Dispatch observation fence', () => {
   afterEach(() => db?.close())
 
   it('rejects out-of-order epochs and observations captured before release', () => {
-    const database = (db = new OrchestrationDb(':memory:'))
+    const database = (db = createCapacityReadyOrchestrationDb(':memory:'))
     const task = database.createTask({
       runId: 'run_legacy_local',
       spec: 'fenced federated observation'

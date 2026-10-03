@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import type { CoordinatorRuntime } from './coordinator-runtime-contract'
 import { dispatchTaskToWorker } from './coordinator-task-dispatch'
 import { reattachDispatchConsumer } from './db/root-dispatch-test-fixture'
@@ -66,7 +67,7 @@ describe('coordinator dispatch with an unobserved prompt', () => {
   afterEach(() => db?.close())
 
   it('never re-pastes a preamble whose turn start was not observed', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'do the work' })
     const runtime = createRuntime(new Error('agent_prompt_stalled'))
     const logs: string[] = []
@@ -88,7 +89,7 @@ describe('coordinator dispatch with an unobserved prompt', () => {
   })
 
   it('lets a late worker report settle a dispatch whose prompt was unobserved', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'do the work' })
     await dispatch(createRuntime(new Error('agent_prompt_stalled')), task.id, [])
     const dispatchId = db.getDispatchContext(task.id)!.id
@@ -111,7 +112,7 @@ describe('coordinator dispatch with an unobserved prompt', () => {
   })
 
   it('still fails the dispatch when the prompt was never delivered', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'do the work' })
     const runtime = createRuntime(new Error('terminal_not_writable'))
 

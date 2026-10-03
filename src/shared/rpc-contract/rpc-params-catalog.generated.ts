@@ -23,6 +23,7 @@ import {
   PairingProvisionRelayParamsSchema
 } from '../mobile-relay-credential-contract'
 import { MobileWebBundleChunkParamsSchema } from '../mobile-web-bundle/bundle-rpc-contract'
+import { RunCapacityRecordParams, RunCapacityShowParams } from '../orchestration-run-capacity'
 import { pluginConsentRequestSchema } from '../plugins/plugin-consent-request'
 import {
   AccountsUnsubscribeParams,
@@ -1018,6 +1019,8 @@ export const RPC_PARAMS_BY_METHOD = {
   'orchestration.requestShow': RequestShowParams,
   'orchestration.reset': ResetParams,
   'orchestration.run': RunParams,
+  'orchestration.runCapacityRecord': RunCapacityRecordParams,
+  'orchestration.runCapacityShow': RunCapacityShowParams,
   'orchestration.runCreate': RunCreateParams,
   'orchestration.runCurrent': RunCurrentParams,
   'orchestration.runList': RunListParams,

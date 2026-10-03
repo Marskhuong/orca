@@ -1,4 +1,5 @@
 import type { OrchestrationDb } from './db'
+import { requireRunCapacity } from './run-capacity-state'
 import type { MessageRow, CoordinatorStatus } from './types'
 import { reconcileLifecycleMessage } from './lifecycle-reconciliation'
 import type { CoordinatorRuntime, WorktreeDrift } from './coordinator-runtime-contract'
@@ -228,7 +229,15 @@ export class Coordinator {
 
   private async dispatchReadyTasks(): Promise<void> {
     this.state.phase = 'dispatching'
-    const readyTasks = this.db.listTasks({ ready: true })
+    const readyTasks = this.db.listTasks({ ready: true }).filter((task) => {
+      try {
+        requireRunCapacity(this.db, task.run_id)
+        return true
+      } catch (error) {
+        this.opts.onLog(`RUN_CAPACITY_HANDSHAKE_REQUIRED: ${String(error)}`)
+        return false
+      }
+    })
     if (readyTasks.length === 0) {
       return
     }
@@ -251,6 +260,7 @@ export class Coordinator {
     if (terminals.length === 0 && slotsAvailable > 0) {
       // Why: create at most one terminal per tick to avoid spawning many at once.
       try {
+        requireRunCapacity(this.db, readyTasks[0].run_id)
         const created = await this.runtime.createTerminal(this.opts.worktree, {
           title: `Worker: ${readyTasks[0].spec.slice(0, 40)}`
         })

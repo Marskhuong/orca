@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 describe('task promotion query allocation', () => {
@@ -14,7 +15,7 @@ describe('task promotion query allocation', () => {
   })
 
   function createDb(): OrchestrationDb {
-    const database = new OrchestrationDb(':memory:')
+    const database = createCapacityReadyOrchestrationDb(':memory:')
     databases.push(database)
     return database
   }

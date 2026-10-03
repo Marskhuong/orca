@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { reconcileRequestedWorkerTerminalReleases } from '../../../../orchestration/worker-terminal-release-reconciliation'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
 import { eraseRpcMethods, type RpcContext } from '../../../core'
@@ -24,7 +25,7 @@ describe('orchestration worker release recovery', () => {
   const workerPaneKey = 'tab_worker:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
   function setup(): void {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     dbOpen = true
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)

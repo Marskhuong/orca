@@ -49,6 +49,7 @@ type CallerParam = 'from' | 'terminal' | 'callerTerminalHandle'
  */
 export const ORCHESTRATION_CALLER_PARAM: Readonly<Record<string, CallerParam>> = {
   'orchestration.runCreate': 'from',
+  'orchestration.runCapacityRecord': 'from',
   'orchestration.runUse': 'from',
   'orchestration.runCurrent': 'from',
   'orchestration.check': 'terminal',

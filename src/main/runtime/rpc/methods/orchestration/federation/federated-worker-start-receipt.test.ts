@@ -1,10 +1,12 @@
+import { RUN_CAPACITY_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-run-capacity'
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { startFederatedWorker } from './federated-worker-start'
 
 describe('federated worker start receipt validation', () => {
@@ -17,7 +19,7 @@ describe('federated worker start receipt validation', () => {
   })
 
   it('marks a malformed ready receipt outcome unknown without persisting resources', async () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     databases.push(db)
@@ -40,6 +42,7 @@ describe('federated worker start receipt validation', () => {
           return {
             capabilities: [
               ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
+              RUN_CAPACITY_RUNTIME_CAPABILITY,
               ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
             ]
           }

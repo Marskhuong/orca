@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { RpcDispatcher } from '../../../dispatcher'
 import type { RpcRequest } from '../../../core'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
@@ -18,7 +19,7 @@ describe('orchestration new-worktree workers', () => {
   const paths: string[] = []
 
   beforeEach(() => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     runId = db.createRun({
@@ -587,7 +588,7 @@ describe('orchestration new-worktree workers', () => {
     const dir = mkdtempSync(join(tmpdir(), 'orca-worker-start-replay-'))
     paths.push(dir)
     db.close()
-    db = new OrchestrationDb(join(dir, 'orchestration.db'))
+    db = createCapacityReadyOrchestrationDb(join(dir, 'orchestration.db'))
     runtime.setOrchestrationDb(db)
     runId = db.createRun({
       objective: 'Recover dispatch input',
@@ -625,7 +626,7 @@ describe('orchestration new-worktree workers', () => {
     }
     db.close()
 
-    db = new OrchestrationDb(join(dir, 'orchestration.db'))
+    db = createCapacityReadyOrchestrationDb(join(dir, 'orchestration.db'))
     const restartedRuntime = new OrcaRuntimeService()
     restartedRuntime.setOrchestrationDb(db)
     vi.spyOn(restartedRuntime, 'getTerminalPaneKey').mockImplementation((handle) =>

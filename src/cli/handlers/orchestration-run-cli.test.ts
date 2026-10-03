@@ -7,6 +7,7 @@ vi.mock('../format', () => ({ printResult: vi.fn() }))
 vi.mock('../selectors', () => ({ getTerminalHandle: getTerminalHandleMock }))
 
 import { ORCHESTRATION_HANDLERS } from './orchestration'
+import { capacityEvidence } from '../../shared/orchestration-run-capacity.test-support'
 
 describe('lightweight Run CLI handlers', () => {
   beforeEach(() => {
@@ -31,6 +32,25 @@ describe('lightweight Run CLI handlers', () => {
     expect(callMock).toHaveBeenCalledWith('orchestration.runCreate', {
       objective: 'Coordinate work',
       from: 'term_coord'
+    })
+  })
+  it('registers completed handshake evidence through the runtime mutation path', async () => {
+    const evidence = capacityEvidence()
+    callMock.mockResolvedValue({ result: { recorded: true, ...evidence } })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: This handler reads only flags, client.call, cwd, and json, all supplied in the fixture.
+    await ORCHESTRATION_HANDLERS['orchestration run-capacity-record']({
+      flags: new Map([
+        ['id', 'run_1'],
+        ['evidence', JSON.stringify(evidence)]
+      ]),
+      client: { call: callMock },
+      cwd: '/tmp/repo',
+      json: true
+    } as never)
+    expect(callMock).toHaveBeenCalledWith('orchestration.runCapacityRecord', {
+      id: 'run_1',
+      from: 'term_coord',
+      evidence
     })
   })
 

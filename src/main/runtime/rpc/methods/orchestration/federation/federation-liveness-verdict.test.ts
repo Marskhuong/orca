@@ -1,8 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultWorkspaceSession } from '../../../../../../shared/constants'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { eraseRpcMethods } from '../../../core'
 
@@ -47,7 +48,7 @@ describe('federation host liveness verdicts', () => {
   let runtime: OrcaRuntimeService
 
   beforeEach(() => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockReturnValue(PANE_KEY)
@@ -101,7 +102,7 @@ describe('federation host liveness verdicts', () => {
   }
 
   async function createRealHost(connectionId: string | null = null) {
-    const hostDb = new OrchestrationDb(':memory:')
+    const hostDb = createCapacityReadyOrchestrationDb(':memory:')
     const hostRuntime = new OrcaRuntimeService(realRuntimeStore() as never)
     hostRuntime.setOrchestrationDb(hostDb)
     hostRuntime.attachWindow(1)

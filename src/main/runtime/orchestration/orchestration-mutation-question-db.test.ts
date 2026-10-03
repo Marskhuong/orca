@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 describe('OrchestrationDb mutation and question state', () => {
@@ -10,7 +11,7 @@ describe('OrchestrationDb mutation and question state', () => {
   })
 
   function createDb(): OrchestrationDb {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     return db
   }
 

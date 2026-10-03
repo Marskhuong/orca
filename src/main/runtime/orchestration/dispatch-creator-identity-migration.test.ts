@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { SCHEMA_VERSION } from './db/contract-constants'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 import { resolveOrchestrationMigrationStartVersion } from './orchestration-schema-version-skew'
@@ -29,7 +30,7 @@ describe('OrchestrationDb v36 to v37 migration', () => {
   function createV36Database(): { path: string; dispatchId: string } {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-v37-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    const seed = new OrchestrationDb(dbPath)
+    const seed = createCapacityReadyOrchestrationDb(dbPath)
     const run = seed.createRun({
       objective: 'pre-v37 run',
       coordinatorHandle: 'term_coord',
@@ -50,7 +51,7 @@ describe('OrchestrationDb v36 to v37 migration', () => {
 
   it('adds the columns as null and keeps the unattributed row a nesting parent', () => {
     const v36 = createV36Database()
-    db = new OrchestrationDb(v36.path)
+    db = createCapacityReadyOrchestrationDb(v36.path)
 
     expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getDispatchContextById(v36.dispatchId)).toMatchObject({

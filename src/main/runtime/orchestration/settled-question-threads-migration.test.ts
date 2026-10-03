@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { SCHEMA_VERSION } from './db/contract-constants'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
@@ -25,7 +26,7 @@ describe('OrchestrationDb v37 to v38 migration', () => {
   function createV37Database(): { path: string; settled: string; active: string } {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-v38-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    const seed = new OrchestrationDb(dbPath)
+    const seed = createCapacityReadyOrchestrationDb(dbPath)
     const run = seed.createRun({
       objective: 'pre-v38 run',
       coordinatorHandle: 'term_coord',
@@ -58,7 +59,7 @@ describe('OrchestrationDb v37 to v38 migration', () => {
 
   it('closes pending questions on settled dispatches and keeps active ones pending', () => {
     const v37 = createV37Database()
-    db = new OrchestrationDb(v37.path)
+    db = createCapacityReadyOrchestrationDb(v37.path)
 
     expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getQuestion(v37.settled)?.status).toBe('closed')

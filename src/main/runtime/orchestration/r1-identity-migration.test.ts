@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { SCHEMA_VERSION } from './db/contract-constants'
 
 const DISPATCH_IDENTITY_COLUMNS = [
@@ -26,7 +27,7 @@ describe('R1 identity migration', () => {
   it('survives v30 to v31 to v30-writer to v31 without guessing provenance', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-r1-identity-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'legacy supervised worker' })
     const started = db.createStartingWorkerDispatch({
       taskId: task.id,
@@ -62,7 +63,7 @@ describe('R1 identity migration', () => {
     v30.pragma('user_version = 30')
     v30.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getDispatchContextById(started.dispatch.id)).toMatchObject({
       retry_of_dispatch_id: null,
@@ -86,7 +87,7 @@ describe('R1 identity migration', () => {
     `)
     oldWriter.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getDispatchContextById('ctx_old_writer')).toMatchObject({
       creator_dispatch_id: null,
@@ -97,7 +98,7 @@ describe('R1 identity migration', () => {
   it('drops the v31 identity columns no reader ever consumed', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-r1-identity-drop-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -112,7 +113,7 @@ describe('R1 identity migration', () => {
     v34.pragma('user_version = 34')
     v34.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const columns = (db.db.pragma('table_info(dispatch_contexts)') as { name: string }[]).map(
       ({ name }) => name
     )

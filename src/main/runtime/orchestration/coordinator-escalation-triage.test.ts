@@ -1,6 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
 import { applyEscalationToDispatch } from './coordinator-escalation-triage'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 describe('coordinator escalation authority', () => {
@@ -11,7 +12,7 @@ describe('coordinator escalation authority', () => {
   })
 
   it('rejects an escalation targeting another active Dispatch', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const attackerTask = db.createTask({ runId: 'run_legacy_local', spec: 'attacker assignment' })
     const attacker = createRootDispatch(
       db,
@@ -43,7 +44,7 @@ describe('coordinator escalation authority', () => {
   })
 
   it('accepts the canonical sender of an imported federated Dispatch', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'remote escalation target' })
     const dispatch = createRootDispatch(db, task.id, 'remote-worker')
 

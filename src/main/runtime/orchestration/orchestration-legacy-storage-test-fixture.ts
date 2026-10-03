@@ -1,8 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from '../../sqlite/sync-database'
-import { LEGACY_RUN_ID, OrchestrationDb } from './db'
+import { LEGACY_RUN_ID } from './db'
 import { dropDerivedDeliverySchema } from './db/schema/derived-delivery-test-fixture'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
@@ -28,7 +29,7 @@ export function createLegacyStorageCutoverFixture(): {
 } {
   const tempDir = mkdtempSync(join(tmpdir(), 'orca-legacy-storage-'))
   const dbPath = join(tempDir, 'orchestration.db')
-  const first = new OrchestrationDb(dbPath)
+  const first = createCapacityReadyOrchestrationDb(dbPath)
   const currentRun = first.createRun({
     objective: 'Current work',
     coordinatorHandle: 'term_current_coord',

@@ -1,6 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 
 // Why: a federated worker terminal is created from an agent id. Passing that id
@@ -16,7 +17,7 @@ describe('federated worker agent launch', () => {
   })
 
   it('creates an exact folder worker terminal from the agent id, never as a command', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'validateOrchestrationAgentLauncher').mockImplementation(() => {})

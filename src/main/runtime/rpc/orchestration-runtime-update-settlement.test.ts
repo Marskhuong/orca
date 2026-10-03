@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import Database from '../../sqlite/sync-database'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { OrchestrationDb } from '../orchestration/db'
+import type { OrchestrationDb } from '../orchestration/db'
 import type { RpcRequest, RpcResponse } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { ORCHESTRATION_METHODS } from './methods/orchestration'
@@ -59,7 +60,7 @@ function createUpdateHarness(): Harness {
   const dbPath = join(dir, 'orchestration.db')
   writeFileSync(markerPath, WORK_BYTES)
 
-  const oldRuntimeDb = new OrchestrationDb(dbPath)
+  const oldRuntimeDb = createCapacityReadyOrchestrationDb(dbPath)
   const task = oldRuntimeDb.createTask({
     runId: 'run_legacy_local',
     spec: 'finish work across an app update',
@@ -90,7 +91,7 @@ function createUpdateHarness(): Harness {
   raw.pragma('user_version = 18')
   raw.close()
 
-  const db = new OrchestrationDb(dbPath)
+  const db = createCapacityReadyOrchestrationDb(dbPath)
   const adoptedRunId = db.getTask(task.id)?.run_id
   expect(adoptedRunId).toBeTruthy()
   const createDispatcher = (): RpcDispatcher => {

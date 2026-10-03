@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -7,7 +8,7 @@ import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version
 import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchestration-compatibility-evidence'
 import Database from '../../sqlite/sync-database'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { OrchestrationDb } from '../orchestration/db'
+import type { OrchestrationDb } from '../orchestration/db'
 import type { RpcRequest, RpcResponse } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { ORCHESTRATION_METHODS } from './methods/orchestration'
@@ -41,7 +42,7 @@ function createHarness(): Harness {
   const dir = mkdtempSync(join(tmpdir(), 'orca-legacy-coordinator-race-'))
   tempDirs.push(dir)
   const dbPath = join(dir, 'orchestration.db')
-  const before = new OrchestrationDb(dbPath)
+  const before = createCapacityReadyOrchestrationDb(dbPath)
   const task = before.createTask({
     runId: 'run_legacy_local',
     spec: 'legacy assignment',
@@ -62,7 +63,7 @@ function createHarness(): Harness {
   raw.pragma('user_version = 18')
   raw.close()
 
-  const db = new OrchestrationDb(dbPath)
+  const db = createCapacityReadyOrchestrationDb(dbPath)
   databases.push(db)
   const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
   const runtime = new OrcaRuntimeService()

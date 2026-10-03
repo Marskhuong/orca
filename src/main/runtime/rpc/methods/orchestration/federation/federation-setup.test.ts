@@ -1,6 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { monitorFederatedSetup } from './federation-setup'
 
@@ -18,7 +19,7 @@ describe('orchestration federated setup evidence', () => {
   })
 
   function createRuntime(): { db: OrchestrationDb; runtime: OrcaRuntimeService } {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     databases.push(db)

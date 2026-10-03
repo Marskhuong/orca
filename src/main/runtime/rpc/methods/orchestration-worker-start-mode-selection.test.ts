@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../orchestration/capacity-ready-db.test-support'
 /**
  * End of the seam: `orchestration.workerStart` reads the user's own setting and starts the worker
  * that setting describes. No flag reaches this decision, and no combination refuses the start.
@@ -5,7 +6,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../orca-runtime'
-import { OrchestrationDb } from '../../orchestration/db'
+import type { OrchestrationDb } from '../../orchestration/db'
 import { ORCHESTRATION_METHODS } from './orchestration'
 
 const STRUCTURED_HANDLE = 'structworker_abc'
@@ -53,7 +54,7 @@ describe('worker-start honours the settings default', () => {
   beforeEach(() => {
     createStructuredWorkerSessionForWorktree.mockClear()
     createExistingWorktreeWorkerTerminal.mockClear()
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     runId = db.createRun({

@@ -1,10 +1,12 @@
 import { z } from 'zod'
+import { RunCapacityEvidence } from '../orchestration-run-capacity'
 import { OptionalFiniteNumber, OptionalString, requiredString } from './rpc-param-primitives'
 import { OptionalWorkerLaunchPreference } from './orchestration-worker-start-params'
 
 export const FederationAttachStartParams = z.object({
   /** Omitted by v1.4.198 coordinators; the worker host then mints a stub home Run. */
   runId: OptionalString,
+  capacityEvidence: RunCapacityEvidence.optional(),
   dispatchId: requiredString('Missing Dispatch ID'),
   taskId: requiredString('Missing Task ID'),
   taskSpec: requiredString('Missing Task spec'),

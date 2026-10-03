@@ -1,6 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { LEGACY_RUN_ID, OrchestrationDb } from './db'
+import { LEGACY_RUN_ID } from './db'
 import { DISPATCH_CIRCUIT_BREAK_FAILURES } from './db/dispatch-context/dispatch-circuit-breaker'
 import { makePaneKey } from '../../../shared/stable-pane-id'
 import { getDefaultWorkspaceSession } from '../../../shared/constants'
@@ -117,7 +118,7 @@ async function gradeWorkerExit(
   taskId: string
 }> {
   const { runtime, workerHandle, coordinatorHandle } = makeRuntimeWithTwoPanes()
-  const db = new OrchestrationDb(':memory:')
+  const db = createCapacityReadyOrchestrationDb(':memory:')
   try {
     const lightweight = mode === 'lightweight-run'
     const runId = lightweight
@@ -176,7 +177,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
   // banner rots. Grade the prose the coordinator actually reads.
   it('titles the escalation from task_title, not the raw spec', async () => {
     const { runtime, workerHandle, coordinatorHandle } = makeRuntimeWithTwoPanes()
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const runId = db.createRun({
         objective: 'escalation prose',
@@ -261,7 +262,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
 
   it('wakes a coordinator already blocked in check --wait', async () => {
     const { runtime, workerHandle, coordinatorHandle } = makeRuntimeWithTwoPanes()
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const run = db.createRun({
         objective: 'sta-4604 blocking coordinator',
@@ -297,7 +298,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
 
   it('escalates only into the dying worker own Run when several Runs are live', async () => {
     const { runtime, workerHandle, coordinatorHandle } = makeRuntimeWithTwoPanes()
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       // A second, more recently created Run is the trap: any "latest active run" lookup picks it.
       const ownRun = db.createRun({
@@ -328,7 +329,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
 
   it('escalates for a supervised worker and settles its worker_dispatches row', async () => {
     const { runtime, workerHandle, coordinatorHandle } = makeRuntimeWithTwoPanes()
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const run = db.createRun({
         objective: 'supervised worker run',
@@ -375,7 +376,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
 
   it('still escalates on the failure that breaks the circuit', async () => {
     const { runtime, workerHandle, coordinatorHandle } = makeRuntimeWithTwoPanes()
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const run = db.createRun({
         objective: 'circuit breaker run',
@@ -440,7 +441,7 @@ describe('STA-4604 worker PTY exit escalation reaches the coordinator', () => {
 
   it('still reaches the Run mailbox when the Run has no bound coordinator', async () => {
     const { runtime, workerHandle, coordinatorHandle } = makeRuntimeWithTwoPanes()
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const run = db.createRun({
         objective: 'run whose coordinator later unbinds',

@@ -1,10 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { describe, expect, it, vi } from 'vitest'
 import {
   ORCHESTRATION_FEDERATION_LIFECYCLE_SETTLEMENT_RUNTIME_CAPABILITY,
   ORCHESTRATION_FEDERATION_FLEET_SNAPSHOT_RUNTIME_CAPABILITY
 } from '../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { OrchestrationDb } from './db'
 import {
   acquireFederationAckLease,
   getFederationAckedThrough,
@@ -32,7 +32,7 @@ describe('federation relay parsing', () => {
   it.each(['escalation', 'decision_gate'] as const)(
     'binds an old remote %s payload to the imported Dispatch',
     async (type) => {
-      const db = new OrchestrationDb(':memory:')
+      const db = createCapacityReadyOrchestrationDb(':memory:')
       const run = db.createRun({
         objective: 'Federated mutation binding',
         coordinatorHandle: 'term_coordinator',
@@ -330,7 +330,7 @@ describe('federation relay acknowledgments', () => {
   })
 
   it('does not wake a waiter for an acknowledged duplicate replay', async () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'Federation replay wake',
       coordinatorHandle: 'term_coordinator',

@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type Database from '../../sqlite/sync-database'
 import SyncDatabase from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 const LEGACY_COORDINATOR_HANDLE = 'term_legacy_coord'
@@ -45,7 +46,7 @@ function createAdoptedFixture(options: { settleWork: boolean }): AdoptedFixture 
   tempDirs.push(dir)
   const dbPath = join(dir, 'orchestration.db')
 
-  const before = new OrchestrationDb(dbPath)
+  const before = createCapacityReadyOrchestrationDb(dbPath)
   const task = before.createTask({
     runId: 'run_legacy_local',
     spec: 'legacy assignment',
@@ -75,7 +76,7 @@ function createAdoptedFixture(options: { settleWork: boolean }): AdoptedFixture 
   raw.pragma('user_version = 18')
   raw.close()
 
-  const db = track(new OrchestrationDb(dbPath))
+  const db = track(createCapacityReadyOrchestrationDb(dbPath))
   return {
     db,
     adoptedRunId: db.getLegacyAdoption()?.adopted_run_id as string,
@@ -244,7 +245,7 @@ describe('pane-bound Run lookup', () => {
   }
 
   it('matches a reminted tab half by leaf UUID', () => {
-    const db = track(new OrchestrationDb(':memory:'))
+    const db = track(createCapacityReadyOrchestrationDb(':memory:'))
     const run = db.createRun({
       objective: 'work',
       coordinatorHandle: 'term_a',
@@ -257,7 +258,7 @@ describe('pane-bound Run lookup', () => {
   })
 
   it('requires an exact match for keys that do not parse', () => {
-    const db = track(new OrchestrationDb(':memory:'))
+    const db = track(createCapacityReadyOrchestrationDb(':memory:'))
     // Extra ':' makes parsePaneKey return null even though the leaf-looking suffix matches.
     const unparseable = 'tab:extra:88888888-8888-4888-8888-888888888888'
     db.createRun({
@@ -273,7 +274,7 @@ describe('pane-bound Run lookup', () => {
   })
 
   it('matches colon-free keys only on exact equality', () => {
-    const db = track(new OrchestrationDb(':memory:'))
+    const db = track(createCapacityReadyOrchestrationDb(':memory:'))
     db.createRun({ objective: 'flat', coordinatorHandle: 'term_c', coordinatorPaneKey: 'flatkey' })
 
     expect(db.getCurrentRunForPane('flatkey')?.objective).toBe('flat')
@@ -281,7 +282,7 @@ describe('pane-bound Run lookup', () => {
   })
 
   it('unbinds only the leaf-equivalent Run when a pane rebinds', () => {
-    const db = track(new OrchestrationDb(':memory:'))
+    const db = track(createCapacityReadyOrchestrationDb(':memory:'))
     const shared = db.createRun({
       objective: 'first',
       coordinatorHandle: 'term_d',
@@ -313,7 +314,7 @@ describe('pane-bound Run lookup', () => {
   })
 
   it('stays flat as the bound-Run set grows', () => {
-    const db = track(new OrchestrationDb(':memory:'))
+    const db = track(createCapacityReadyOrchestrationDb(':memory:'))
     const leafOf = (i: number) => `${i.toString(16).padStart(8, '0')}-1111-4111-8111-111111111111`
     const bind = (from: number, to: number): void => {
       for (let i = from; i < to; i++) {
@@ -348,7 +349,7 @@ describe('pane-bound Run lookup', () => {
   })
 
   it('hands the JS filter an O(1) candidate set regardless of bound-Run count', () => {
-    const db = track(new OrchestrationDb(':memory:'))
+    const db = track(createCapacityReadyOrchestrationDb(':memory:'))
     const sqlite = (db as unknown as { db: Database.Database }).db
     const leaf = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
     for (let i = 0; i < 500; i++) {

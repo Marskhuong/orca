@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,7 +9,7 @@ import {
   AGENT_PROMPT_TEST_WORKTREE_ID,
   createAgentPromptSubmissionRuntime
 } from '../../../../agent-prompt-submission-runtime-test-fixture'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { RpcRequest } from '../../../core'
 import { RpcDispatcher } from '../../../dispatcher'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
@@ -90,7 +91,7 @@ async function createPromptContractHarness(
   const temporaryRoot = mkdtempSync(join(tmpdir(), 'orca-worker-prompt-contract-'))
   temporaryRoots.push(temporaryRoot)
   const dbPath = join(temporaryRoot, 'orchestration.db')
-  const db = new OrchestrationDb(dbPath)
+  const db = createCapacityReadyOrchestrationDb(dbPath)
   openDatabases.push(db)
   runtime.setOrchestrationDb(db)
   const run = db.createRun({
@@ -167,7 +168,7 @@ function reopenPromptContractDb(harness: PromptContractHarness): OrchestrationDb
     openDatabases.splice(index, 1)
   }
   harness.db.close()
-  harness.db = new OrchestrationDb(harness.dbPath)
+  harness.db = createCapacityReadyOrchestrationDb(harness.dbPath)
   openDatabases.push(harness.db)
   return harness.db
 }

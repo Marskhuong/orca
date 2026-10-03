@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../shared/protocol-version'
 import {
@@ -7,7 +8,7 @@ import {
   taskNotStartableRefusal
 } from '../../../../shared/orchestration-dispatch-refusal-contract'
 import { OrcaRuntimeService } from '../../orca-runtime'
-import { OrchestrationDb } from '../../orchestration/db'
+import type { OrchestrationDb } from '../../orchestration/db'
 import type { RpcFailure, RpcRequest, RpcResponse } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { ORCHESTRATION_METHODS } from './orchestration'
@@ -188,7 +189,7 @@ function expectFailure(response: RpcResponse): RpcFailure {
 }
 
 function createHarness(): Harness {
-  const db = new OrchestrationDb(':memory:')
+  const db = createCapacityReadyOrchestrationDb(':memory:')
   const runtime = new OrcaRuntimeService()
   runtime.setOrchestrationDb(db)
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>

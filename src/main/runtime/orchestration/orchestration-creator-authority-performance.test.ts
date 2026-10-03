@@ -1,6 +1,8 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
 import type Database from '../../sqlite/sync-database'
-import { DISPATCH_CONTEXT_CLAIM_SQL, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { DISPATCH_CONTEXT_CLAIM_SQL } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 const CREATOR_PANE = 'tab-creator:11111111-1111-4111-8111-111111111111'
@@ -16,7 +18,7 @@ describe('creator authority lookup performance', () => {
   afterEach(() => db?.close())
 
   it('uses bounded creator-handle and pane-leaf indexes', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const sqlite = sqliteFor(db)
     const taskPlan = sqlite
       .prepare(
@@ -52,7 +54,7 @@ describe('creator authority lookup performance', () => {
   })
 
   it('uses active-assignee indexes for Dispatch occupancy claims', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const plan = sqliteFor(db)
       .prepare(`EXPLAIN QUERY PLAN ${DISPATCH_CONTEXT_CLAIM_SQL}`)
       .all(
@@ -78,7 +80,7 @@ describe('creator authority lookup performance', () => {
   })
 
   it('keeps 300 Task reads bounded with 50,000 retained Runs', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'owner',
       coordinatorHandle: 'term-coordinator',
@@ -120,7 +122,7 @@ describe('creator authority lookup performance', () => {
   it.each([20_000, 50_000])(
     'keeps active creator lookup bounded with %i retained same-handle Dispatches',
     (retainedDispatchCount) => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const run = db.createRun({
         objective: 'owner',
         coordinatorHandle: 'term-coordinator',

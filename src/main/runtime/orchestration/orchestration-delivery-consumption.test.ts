@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 import { reconcileLifecycleMessage } from './lifecycle-reconciliation'
 
@@ -8,7 +9,7 @@ describe('mailbox delivery consumption', () => {
   afterEach(() => db?.close())
 
   function setup() {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'Retired delivery',
       coordinatorHandle: 'term_coord',

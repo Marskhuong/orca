@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,7 +7,6 @@ import { z } from 'zod'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { OrchestrationDb } from '../orchestration/db'
 import { defineMethod, type RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { ORCHESTRATION_METHODS } from './methods/orchestration'
@@ -40,7 +40,7 @@ describe('durable orchestration mutation ledger', () => {
   })
 
   function createHarness(dbPath: (string & {}) | ':memory:' = ':memory:') {
-    const db = new OrchestrationDb(dbPath)
+    const db = createCapacityReadyOrchestrationDb(dbPath)
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     const effect = vi.fn((subject: string) =>
@@ -139,7 +139,7 @@ describe('durable orchestration mutation ledger', () => {
   })
 
   it('joins concurrent identical mutations', async () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     let release: (() => void) | undefined
@@ -248,7 +248,7 @@ describe('durable orchestration mutation ledger', () => {
   })
 
   it('resumes a pending idempotent worker release after restart', async () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     const params = { dispatch: 'ctx_release' }
@@ -296,7 +296,7 @@ describe('durable orchestration mutation ledger', () => {
   })
 
   it('returns the accepted Dispatch when worker-start was interrupted by restart', async () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     const params = {
@@ -359,7 +359,7 @@ describe('durable orchestration mutation ledger', () => {
     const dir = mkdtempSync(join(tmpdir(), 'orca-mutation-ask-recovery-'))
     paths.push(dir)
     const dbPath = join(dir, 'orchestration.db')
-    const db = new OrchestrationDb(dbPath)
+    const db = createCapacityReadyOrchestrationDb(dbPath)
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockReturnValue('tab_worker:leaf_worker')
@@ -398,7 +398,7 @@ describe('durable orchestration mutation ledger', () => {
     const first = firstDispatcher.dispatch(askRequest, { signal: controller.signal })
     await vi.waitFor(() => expect(db.getInbox(10)).toHaveLength(1))
 
-    const restartedDb = new OrchestrationDb(dbPath)
+    const restartedDb = createCapacityReadyOrchestrationDb(dbPath)
     const restartedRuntime = new OrcaRuntimeService()
     restartedRuntime.setOrchestrationDb(restartedDb)
     vi.spyOn(restartedRuntime, 'getTerminalPaneKey').mockReturnValue('tab_worker:leaf_worker')

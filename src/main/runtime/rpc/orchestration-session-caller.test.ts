@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ZodObject } from 'zod'
+import { capacityEvidence } from '../../../shared/orchestration-run-capacity.test-support'
 import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchestration-compatibility-evidence'
 import { ORCHESTRATION_SESSION_CALLER_ERROR_CODES as CODES } from '../../../shared/orchestration-session-caller-codes'
 import { DeviceRegistry } from '../device-registry'
@@ -54,6 +55,7 @@ const NAMES_NO_RESOLVED_PARTY: Readonly<Record<string, string>> = {
 /** One request per identity-consulting method, valid enough to reach the dispatcher entry. */
 const MINIMAL_PARAMS: Readonly<Record<string, Record<string, unknown>>> = {
   'orchestration.runCreate': { objective: 'o' },
+  'orchestration.runCapacityRecord': { id: 'run_missing', evidence: capacityEvidence() },
   'orchestration.runUse': { id: 'run_missing' },
   'orchestration.runCurrent': {},
   'orchestration.check': {},
@@ -95,9 +97,8 @@ describe('orchestration session callers at the dispatch entry', () => {
       })
       .sort()
 
-    // The population: 43 registered methods carrying 27 party-naming fields.
-    expect(registry.size).toBe(43)
-    expect(partyNaming).toHaveLength(27)
+    expect(registry.size).toBe(45)
+    expect(partyNaming).toHaveLength(28)
     expect(partyNaming).toEqual(
       [
         ...Object.entries(ORCHESTRATION_CALLER_PARAM).map(

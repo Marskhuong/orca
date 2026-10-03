@@ -1,13 +1,14 @@
 import type { DispatchContextRow, TaskRow, WorkerDispatchRow } from '../../types'
 import { OrchestrationError } from '../../orchestration-error'
 import { ensureMutationReceiptCapacity } from '../../mutation-receipt-capacity'
-import { CURRENT_CONTRACT_VERSION } from '../contract-constants'
+import { CURRENT_CONTRACT_VERSION, LEGACY_RUN_ID } from '../contract-constants'
 import { generateId } from '../generated-id'
 import type { OrchestrationDb } from '../orchestration-db'
 import { insertStartingDispatchContextRow } from '../dispatch-row-writer'
 import { recordedCreatorIdentity, type DispatchCreator } from '../dispatch-depth'
 import { transitionLifecycleWithDb } from '../lifecycle-transition'
 import { taskNotFoundError, taskNotStartableError } from '../../task-dispatch-refusal'
+import { requireRunCapacity } from '../../run-capacity-state'
 
 export function createStartingWorkerDispatch(
   this: OrchestrationDb,
@@ -45,6 +46,11 @@ export function createStartingWorkerDispatch(
 ): { dispatch: DispatchContextRow; worker: WorkerDispatchRow; task: TaskRow } {
   this.db.exec('BEGIN IMMEDIATE')
   try {
+    const existingTask = params.taskId ? this.getTask(params.taskId) : undefined
+    if (params.taskId && !existingTask) {
+      throw taskNotFoundError(`Task ${params.taskId} was not found.`, { taskId: params.taskId })
+    }
+    requireRunCapacity(this, existingTask?.run_id ?? params.taskRunId ?? LEGACY_RUN_ID)
     if (params.mutationReceipt) {
       const receipt = params.mutationReceipt
       const existing = this.getMutationReceipt(receipt.callerFingerprint, receipt.requestId)

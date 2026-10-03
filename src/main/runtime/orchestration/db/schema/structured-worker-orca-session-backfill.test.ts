@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from '../../capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
   structuredWorkerProcessIncarnation
 } from '../../../structured-worker-identity'
-import { OrchestrationDb } from '../orchestration-db'
+import type { OrchestrationDb } from '../orchestration-db'
 import { backfillStructuredWorkerOrcaSessionIds } from './structured-worker-orca-session-backfill'
 
 const SESSION_A = '0d2f4b6a-8c1e-4a3b-9d5f-7e0a2c4b6d81'
@@ -44,7 +45,7 @@ describe('structured worker Orca session id backfill', () => {
   }
 
   it('proves a handle through the session this host recorded against it', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const handle = mintStructuredWorkerHandle()
     const pane = mintStructuredWorkerPaneKey(SESSION_B)
     // The worker's own row carries no incarnation; its terminal resource row does.
@@ -65,7 +66,7 @@ describe('structured worker Orca session id backfill', () => {
   })
 
   it('leaves every row it cannot tie to exactly one valid session NULL', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const unrecorded = mintStructuredWorkerHandle()
     const noRecord = dispatch({
       handle: unrecorded,
@@ -109,7 +110,7 @@ describe('structured worker Orca session id backfill', () => {
   })
 
   it('fills only NULLs and never rewrites an Orca session id a writer recorded', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const handle = mintStructuredWorkerHandle()
     const id = dispatch({
       handle,
@@ -126,7 +127,7 @@ describe('structured worker Orca session id backfill', () => {
   })
 
   it("fills a worker-coordinated Run over an Orca session id an older binding's generation left behind", () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runFor = (sessionId: string): string => {
       const handle = mintStructuredWorkerHandle()
       const paneKey = mintStructuredWorkerPaneKey(sessionId)

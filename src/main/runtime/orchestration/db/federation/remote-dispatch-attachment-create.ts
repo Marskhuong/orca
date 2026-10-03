@@ -4,6 +4,9 @@ import { ensureMutationReceiptCapacity } from '../../mutation-receipt-capacity'
 import type { OrchestrationDb } from '../orchestration-db'
 import { federatedStubHomeRunId } from '../contract-constants'
 import { insertRemoteDispatchAttachmentRow } from '../dispatch-row-writer'
+import { recordRunCapacity, requireRunCapacity } from '../../run-capacity-state'
+import { RunCapacityEvidence } from '../../../../../shared/orchestration-run-capacity'
+import { runCapacityHandshakeRequiredRefusal } from '../../../../../shared/orchestration-dispatch-refusal-contract'
 
 export function createRemoteDispatchAttachment(
   this: OrchestrationDb,
@@ -11,6 +14,7 @@ export function createRemoteDispatchAttachment(
     dispatchId: string
     /** Absent from a v1.4.198 coordinator; replaced by a per-attachment stub Run. */
     runId?: string
+    capacityEvidence?: RunCapacityEvidence
     taskId: string
     homePeerFingerprint: string
     protocolVersion: number
@@ -47,6 +51,11 @@ export function createRemoteDispatchAttachment(
       )
     }
     const runId = params.runId ?? federatedStubHomeRunId(params.dispatchId)
+    if (!params.capacityEvidence || !params.runId) {
+      const refusal = runCapacityHandshakeRequiredRefusal(runId)
+      throw new OrchestrationError(refusal.code, refusal.message, refusal.data)
+    }
+    RunCapacityEvidence.parse(params.capacityEvidence)
     if (!runId.trim()) {
       throw new OrchestrationError('invalid_argument', 'Missing Run ID')
     }
@@ -57,6 +66,19 @@ export function createRemoteDispatchAttachment(
       )
       .run(runId, `Coordinated from ${params.homePeerFingerprint}`)
     this.requireRun(runId)
+    if (this.getRunRaw(runId)?.home_database === 'this_database') {
+      const homeDispatch = this.getDispatchContextById(params.dispatchId)
+      if (homeDispatch?.run_id !== runId || homeDispatch.task_id !== params.taskId) {
+        throw new OrchestrationError(
+          'resource_server_mismatch',
+          'Local Run attachment must match its home Dispatch.'
+        )
+      }
+      // A loopback attachment uses the local authority without overwriting it with peer evidence.
+      requireRunCapacity(this, runId)
+    } else {
+      recordRunCapacity(this, runId, params.capacityEvidence, params.homePeerFingerprint)
+    }
     ensureMutationReceiptCapacity(this.db)
     this.db
       .prepare(

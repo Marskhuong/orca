@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -8,7 +9,7 @@ import {
   mintStructuredWorkerPaneKey,
   structuredWorkerProcessIncarnation
 } from '../structured-worker-identity'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { SCHEMA_VERSION } from './db/contract-constants'
 import { formatOrcaSessionAddress } from '../../../shared/orca-session-address'
 import { testOrcaSessionId } from '../../../shared/orca-session-address-test-fixture'
@@ -215,7 +216,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it('starts a v41 database at v41 and gives exactly its structured-worker rows an Orca session id', () => {
     const path = tempDbPath()
-    const seed = new OrchestrationDb(path)
+    const seed = createCapacityReadyOrchestrationDb(path)
     const rows = seedStructuredAndPtyRows(seed)
     seed.close()
     stripOrcaSessionSchema(path, 41)
@@ -228,7 +229,7 @@ describe('orchestration Orca session id column migration', () => {
       probe.close()
     }
 
-    const db = new OrchestrationDb(path)
+    const db = createCapacityReadyOrchestrationDb(path)
     try {
       expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       expect(db.getDispatchContextById(rows.structuredDispatchId)).toMatchObject({
@@ -272,7 +273,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it('starts a v40 database at v40 and runs v41 before v42', () => {
     const path = tempDbPath()
-    const seed = new OrchestrationDb(path)
+    const seed = createCapacityReadyOrchestrationDb(path)
     const rows = seedStructuredAndPtyRows(seed)
     seed.close()
     stripOrcaSessionSchema(path, 40)
@@ -291,7 +292,7 @@ describe('orchestration Orca session id column migration', () => {
       raw.close()
     }
 
-    const db = new OrchestrationDb(path)
+    const db = createCapacityReadyOrchestrationDb(path)
     try {
       expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       expect(orcaSessionColumns(db.db)).toEqual(ORCA_SESSION_ID_COLUMNS)
@@ -310,7 +311,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it('upgrades a database from before the coordinator cache through the static triggers', () => {
     const path = tempDbPath()
-    const seed = new OrchestrationDb(path)
+    const seed = createCapacityReadyOrchestrationDb(path)
     const rows = seedStructuredAndPtyRows(seed)
     seed.close()
     stripOrcaSessionSchema(path, 27)
@@ -324,7 +325,7 @@ describe('orchestration Orca session id column migration', () => {
 
     // createTables installs its static triggers before this chain's v40 step inserts into runs, so
     // a static form naming coordinator_orca_session_id would fail to prepare here.
-    const db = new OrchestrationDb(path)
+    const db = createCapacityReadyOrchestrationDb(path)
     try {
       expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       for (const sql of coordinatorTriggerSql(db.db)) {
@@ -341,10 +342,10 @@ describe('orchestration Orca session id column migration', () => {
 
   it('lets a v41 binary read and write a v42 database with Orca session ids in it', () => {
     const path = tempDbPath()
-    const seed = new OrchestrationDb(path)
+    const seed = createCapacityReadyOrchestrationDb(path)
     const rows = seedStructuredAndPtyRows(seed)
     seed.close()
-    const upgraded = new OrchestrationDb(path)
+    const upgraded = createCapacityReadyOrchestrationDb(path)
     expect(upgraded.getRunRaw(rows.structuredRunId)?.coordinator_orca_session_id).toBe(SESSION_ID)
     upgraded.db
       .prepare(
@@ -422,7 +423,7 @@ describe('orchestration Orca session id column migration', () => {
       v41.close()
     }
 
-    const rolledForward = new OrchestrationDb(path)
+    const rolledForward = createCapacityReadyOrchestrationDb(path)
     try {
       expect(rolledForward.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       expect(rolledForward.getRun('run_v41')?.coordinator_handle).toBe('term_v41')
@@ -440,7 +441,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it('fills structured-worker rows written after the stamp reached v42 on the next open', () => {
     const path = tempDbPath()
-    const first = new OrchestrationDb(path)
+    const first = createCapacityReadyOrchestrationDb(path)
     const rows = seedStructuredAndPtyRows(first)
     // The shape a binary rolled back past v42 writes: its INSERTs name no Orca session id column.
     first.db.exec(
@@ -451,7 +452,7 @@ describe('orchestration Orca session id column migration', () => {
     ).toBeNull()
     first.close()
 
-    const reopened = new OrchestrationDb(path)
+    const reopened = createCapacityReadyOrchestrationDb(path)
     try {
       expect(
         reopened.getDispatchContextById(rows.structuredDispatchId)?.assignee_orca_session_id
@@ -470,7 +471,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it('drives a dev database stamped v42 with prototype principal columns to add the Orca session ids', () => {
     const path = tempDbPath()
-    const seed = new OrchestrationDb(path)
+    const seed = createCapacityReadyOrchestrationDb(path)
     const rows = seedStructuredAndPtyRows(seed)
     seed.close()
     stripOrcaSessionSchema(path, 41)
@@ -505,7 +506,7 @@ describe('orchestration Orca session id column migration', () => {
       raw.close()
     }
 
-    const db = new OrchestrationDb(path)
+    const db = createCapacityReadyOrchestrationDb(path)
     try {
       expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       expect(orcaSessionColumns(db.db)).toEqual(ORCA_SESSION_ID_COLUMNS)
@@ -527,7 +528,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it("stops counting a chat coordinator's Orca session id once a v41 binary rebinds and then unbinds the Run", () => {
     const path = tempDbPath()
-    const seeded = new OrchestrationDb(path)
+    const seeded = createCapacityReadyOrchestrationDb(path)
     seeded.db
       .prepare(
         `INSERT INTO runs (
@@ -574,7 +575,7 @@ describe('orchestration Orca session id column migration', () => {
     })
     v41.close()
 
-    const reopened = new OrchestrationDb(path)
+    const reopened = createCapacityReadyOrchestrationDb(path)
     try {
       const run = reopened.getRunRaw('run_chat')
       expect(run && currentRunCoordinatorOrcaSessionId(run)).toBeNull()
@@ -591,7 +592,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it('finds Runs by coordinator Orca session id through an index on fresh and upgraded databases', () => {
     const expectIndexedLookup = (path: string): void => {
-      const db = new OrchestrationDb(path)
+      const db = createCapacityReadyOrchestrationDb(path)
       try {
         const plan = coordinatorLookupPlan(db.db)
         expect(plan).toContain('USING INDEX idx_runs_coordinator_orca_session_id')
@@ -603,7 +604,7 @@ describe('orchestration Orca session id column migration', () => {
     expectIndexedLookup(tempDbPath())
 
     const upgradedPath = tempDbPath()
-    const seed = new OrchestrationDb(upgradedPath)
+    const seed = createCapacityReadyOrchestrationDb(upgradedPath)
     seedStructuredAndPtyRows(seed)
     seed.close()
     stripOrcaSessionSchema(upgradedPath, 41)
@@ -612,7 +613,7 @@ describe('orchestration Orca session id column migration', () => {
 
   it('replays a dev database stamped v42 with the earlier *_actor columns to add the Orca session ids', () => {
     const path = tempDbPath()
-    const seed = new OrchestrationDb(path)
+    const seed = createCapacityReadyOrchestrationDb(path)
     const rows = seedStructuredAndPtyRows(seed)
     seed.close()
     stripOrcaSessionSchema(path, 41)
@@ -663,7 +664,7 @@ describe('orchestration Orca session id column migration', () => {
       raw.close()
     }
 
-    const db = new OrchestrationDb(path)
+    const db = createCapacityReadyOrchestrationDb(path)
     try {
       expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       expect(orcaSessionColumns(db.db)).toEqual(ORCA_SESSION_ID_COLUMNS)

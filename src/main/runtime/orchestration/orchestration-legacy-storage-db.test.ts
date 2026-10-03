@@ -1,12 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { rmSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import {
-  CURRENT_CONTRACT_VERSION,
-  LEGACY_CONTRACT_VERSION,
-  LEGACY_RUN_ID,
-  OrchestrationDb
-} from './db'
+import type { OrchestrationDb } from './db'
+import { CURRENT_CONTRACT_VERSION, LEGACY_CONTRACT_VERSION, LEGACY_RUN_ID } from './db'
 import {
   createLegacyStorageCutoverFixture,
   type LegacyStorageCutoverFixture
@@ -38,7 +35,7 @@ describe('OrchestrationDb legacy contract storage', () => {
     coordinatorPrincipalId: string
   } {
     const fixture = createCutoverFixture()
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     const worker = db.commitLegacyCompatibilityPrincipal({
       runId: adoptedRunId,
@@ -69,7 +66,7 @@ describe('OrchestrationDb legacy contract storage', () => {
 
   it('atomically rehomes the full graph, fences legacy Delivery, and preserves current rows', () => {
     const fixture = createCutoverFixture()
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoption = db.getLegacyAdoption()
     const adoptedRunId = adoption?.adopted_run_id as string
     const sqlite = (db as unknown as { db: Database.Database }).db
@@ -127,7 +124,7 @@ describe('OrchestrationDb legacy contract storage', () => {
       .run(LEGACY_RUN_ID, fixture.legacyTaskId)
     partial.pragma('user_version = 19')
     partial.close()
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     expect(db.getLegacyAdoption()?.adopted_run_id).toBe(adoptedRunId)
     expect(db.getTask(fixture.legacyTaskId)?.run_id).toBe(adoptedRunId)
     expect(db.getDispatchContextById(fixture.currentDispatchId)?.contract_version).toBe(
@@ -144,7 +141,7 @@ describe('OrchestrationDb legacy contract storage', () => {
       .run(fixture.unrelatedRunId, fixture.currentDispatchId)
     raw.close()
 
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
 
     expect(db.getLegacyAdoption()).toBeDefined()
     expect(db.getDispatchContextById(fixture.currentDispatchId)?.run_id).toBe(
@@ -174,7 +171,7 @@ describe('OrchestrationDb legacy contract storage', () => {
   })
 
   it('does not synthesize an adopted Run or compatibility authority for a fresh database', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
 
     expect(db.getLegacyAdoption()).toBeUndefined()
     expect(db.listLegacyCompatibilityPrincipals(LEGACY_RUN_ID)).toEqual([])

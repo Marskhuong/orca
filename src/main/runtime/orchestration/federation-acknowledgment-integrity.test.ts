@@ -1,6 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 
 describe('federation acknowledgment integrity', () => {
   let db: OrchestrationDb | undefined
@@ -11,7 +12,7 @@ describe('federation acknowledgment integrity', () => {
     db: OrchestrationDb
     dispatchId: string
   } {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const dispatchId = `ctx_protocol_${protocolVersion}`
     db.createRemoteDispatchAttachment({
       runId: 'run-home',

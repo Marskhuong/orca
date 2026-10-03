@@ -1,5 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { LEGACY_RUN_ID, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { LEGACY_RUN_ID } from './db'
 
 describe('OrchestrationDb reset scopes', () => {
   let db: OrchestrationDb | undefined
@@ -7,7 +9,7 @@ describe('OrchestrationDb reset scopes', () => {
   afterEach(() => db?.close())
 
   function createState() {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'Reset contract',
       coordinatorHandle: 'term_coord',

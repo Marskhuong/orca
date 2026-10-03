@@ -1,7 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Coordinator } from './coordinator'
 import type { CoordinatorRuntime } from './coordinator-runtime-contract'
-import { OrchestrationDb } from './db'
 
 afterEach(() => vi.useRealTimers())
 
@@ -10,7 +10,7 @@ describe('coordinator terminal census availability', () => {
     'defers dispatch on %s and reuses the existing worker after recovery',
     async (error) => {
       vi.useFakeTimers()
-      const db = new OrchestrationDb(':memory:')
+      const db = createCapacityReadyOrchestrationDb(':memory:')
       const task = db.createTask({ runId: 'run_legacy_local', spec: 'implement the feature' })
       const listTerminals = vi
         .fn<CoordinatorRuntime['listTerminals']>()

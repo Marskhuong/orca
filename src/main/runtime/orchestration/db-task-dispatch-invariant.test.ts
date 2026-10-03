@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch, reattachDispatchConsumer } from './db/root-dispatch-test-fixture'
 
 type DatabaseHarness = {
@@ -476,7 +477,7 @@ function createDatabase(path?: string): DatabaseHarness {
   const dir = path ? harnesses.find((harness) => harness.path === path)?.dir : undefined
   const ownedDir = dir ?? mkdtempSync(join(tmpdir(), 'orca-task-dispatch-db-'))
   const dbPath = path ?? join(ownedDir, 'orchestration.db')
-  const harness = { db: new OrchestrationDb(dbPath), dir: ownedDir, path: dbPath }
+  const harness = { db: createCapacityReadyOrchestrationDb(dbPath), dir: ownedDir, path: dbPath }
   harnesses.push(harness)
   return harness
 }

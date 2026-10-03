@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../orchestration/capacity-ready-db.test-support'
 /**
  * The worker mode is a runtime implementation detail, not part of the orchestration contract.
  *
@@ -13,7 +14,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../orca-runtime'
-import { OrchestrationDb } from '../../orchestration/db'
+import type { OrchestrationDb } from '../../orchestration/db'
 import {
   mintStructuredWorkerPaneKey,
   structuredWorkerIdentities,
@@ -117,7 +118,7 @@ describe('a worker cannot tell which mode it is running in', () => {
   beforeEach(() => {
     structuredPreambles.length = 0
     structuredWorkerIdentities.clear()
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     // Deferred to the real getters for a structured handle, because resolving one through the

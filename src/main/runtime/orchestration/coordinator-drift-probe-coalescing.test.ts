@@ -1,8 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Coordinator } from './coordinator'
 import type { CoordinatorRuntime } from './coordinator-runtime-contract'
 import { DISPATCH_STALE_THRESHOLD } from './coordinator-stale-base-flag'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 
 describe('Coordinator drift probe coalescing', () => {
   let db: OrchestrationDb
@@ -12,7 +13,7 @@ describe('Coordinator drift probe coalescing', () => {
   })
 
   it('shares one drift snapshot across a tick and probes again on the next tick', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const sentMessages: { handle: string; text: string }[] = []
     const probeDriftCalls: string[] = []
     const terminals = [
@@ -78,7 +79,7 @@ describe('Coordinator drift probe coalescing', () => {
   })
 
   it('reuses capacity after refusing a stale-base task', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const sentMessages: { handle: string; text: string }[] = []
     const probeDriftCalls: string[] = []
     const runtime: CoordinatorRuntime = {

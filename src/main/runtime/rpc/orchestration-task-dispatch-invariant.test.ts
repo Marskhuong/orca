@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -5,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import Database from '../../sqlite/sync-database'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { OrchestrationDb } from '../orchestration/db'
+import type { OrchestrationDb } from '../orchestration/db'
 import type { RpcRequest, RpcResponse } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { ORCHESTRATION_METHODS } from './methods/orchestration'
@@ -215,7 +216,7 @@ function createHarness(): Harness {
   const dir = mkdtempSync(join(tmpdir(), 'orca-task-dispatch-invariant-'))
   const dbPath = join(dir, 'orchestration.db')
   tempDirs.push(dir)
-  const db = new OrchestrationDb(dbPath)
+  const db = createCapacityReadyOrchestrationDb(dbPath)
   const runtime = new OrcaRuntimeService()
   runtime.setOrchestrationDb(db)
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => {

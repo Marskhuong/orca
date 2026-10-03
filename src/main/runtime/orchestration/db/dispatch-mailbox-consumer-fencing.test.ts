@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from '../capacity-ready-db.test-support'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from '../db'
+import type { OrchestrationDb } from '../db'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../shared/protocol-version'
 import { createRootDispatch, reattachDispatchConsumer } from './root-dispatch-test-fixture'
 import type { DeliveryRow } from '../types'
@@ -16,7 +17,7 @@ describe('dispatch mailbox consumer fencing', () => {
   let db: OrchestrationDb
 
   beforeEach(() => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
   })
   afterEach(() => db.close())
 

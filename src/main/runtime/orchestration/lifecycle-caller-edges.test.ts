@@ -1,8 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { transitionLifecycleWithDb } from './db/lifecycle-transition'
 
 let db: OrchestrationDb | undefined
@@ -19,7 +20,7 @@ afterEach(() => {
 
 function createDatabase(): OrchestrationDb {
   directory = mkdtempSync(join(tmpdir(), 'orca-lifecycle-edges-'))
-  db = new OrchestrationDb(join(directory, 'orchestration.db'))
+  db = createCapacityReadyOrchestrationDb(join(directory, 'orchestration.db'))
   return db
 }
 

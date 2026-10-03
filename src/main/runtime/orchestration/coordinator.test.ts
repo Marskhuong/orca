@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { reconcileLifecycleMessage } from './lifecycle-reconciliation'
 import { Coordinator } from './coordinator'
 import type { CoordinatorRuntime } from './coordinator-runtime-contract'
@@ -120,7 +121,7 @@ describe('Coordinator', () => {
   })
 
   it('throws if no tasks exist', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     const coordinator = new Coordinator(db, runtime, {
       spec: 'do stuff',
@@ -130,7 +131,7 @@ describe('Coordinator', () => {
   })
 
   it('dispatches a ready task to an available terminal', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.cliCommand = 'orca-ide'
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
@@ -167,7 +168,7 @@ describe('Coordinator', () => {
   })
 
   it('records the assignee pane key when the runtime can resolve one', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
     const withPaneLookup = Object.assign(runtime, {
@@ -196,7 +197,7 @@ describe('Coordinator', () => {
   })
 
   it('records authenticated process authority for automatic dispatch', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
     const withAuthority = Object.assign(runtime, {
@@ -234,7 +235,7 @@ describe('Coordinator', () => {
   })
 
   it('records completedTasks when send reconciled worker_done before coordinator read', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
 
     const task = db.createTask({
@@ -265,7 +266,7 @@ describe('Coordinator', () => {
   })
 
   it('does not duplicate completedTasks for repeated completed worker_done messages', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
 
     const task = db.createTask({
@@ -309,7 +310,7 @@ describe('Coordinator', () => {
   })
 
   it('creates a terminal when none are available', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
 
     const task = db.createTask({ runId, spec: 'work' })
@@ -337,7 +338,7 @@ describe('Coordinator', () => {
   })
 
   it('handles escalation and circuit breaker', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [
       { handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true },
@@ -380,7 +381,7 @@ describe('Coordinator', () => {
   })
 
   it('reports failed when dispatch send failures circuit-break in the DB', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
     runtime.sendTerminalAgentPrompt = async () => {
@@ -405,7 +406,7 @@ describe('Coordinator', () => {
   })
 
   it('handles decision gate blocking and resolution', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
 
@@ -471,7 +472,7 @@ describe('Coordinator', () => {
   })
 
   it('respects task DAG ordering', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
 
@@ -522,7 +523,7 @@ describe('Coordinator', () => {
   })
 
   it('respects maxConcurrent limit', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [
       { handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true },
@@ -564,7 +565,7 @@ describe('Coordinator', () => {
   })
 
   it('logs a stale warning for dispatched rows past the threshold and does not auto-fail', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     // No terminals available so dispatchReadyTasks creates one and we can
     // drive the stale-scan deterministically via SQL backdating.
@@ -603,7 +604,7 @@ describe('Coordinator', () => {
   })
 
   it('records heartbeat by dispatchId on worker heartbeat messages', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
 
@@ -641,7 +642,7 @@ describe('Coordinator', () => {
   })
 
   it('ignores stale worker_done from a failed retry before accepting the active dispatch', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     const logs: string[] = []
 
@@ -702,7 +703,7 @@ describe('Coordinator', () => {
   })
 
   it('accepts worker_done pane provenance after an assignee handle changes', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     const logs: string[] = []
 
@@ -738,7 +739,7 @@ describe('Coordinator', () => {
   })
 
   it('can be stopped', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = createMockRuntime()
     db.createTask({ runId, spec: 'never finishes' })
 
@@ -761,7 +762,7 @@ describe('Coordinator', () => {
 
   describe('stale-base dispatch guard', () => {
     it('threads drift into the preamble when behind > 0 and under threshold', async () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const runtime = createMockRuntime()
       runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
       runtime.setProbeDrift({
@@ -800,7 +801,7 @@ describe('Coordinator', () => {
     })
 
     it('silently skips dispatch when drift > threshold and allow-stale-base is absent', async () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const runtime = createMockRuntime()
       runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
       runtime.setProbeDrift({
@@ -841,7 +842,7 @@ describe('Coordinator', () => {
     })
 
     it('proceeds with stripped spec + drift section when allow-stale-base overrides', async () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const runtime = createMockRuntime()
       runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
       runtime.setProbeDrift({
@@ -880,7 +881,7 @@ allow-stale-base: true`
     })
 
     it('proceeds without drift section when probeWorktreeDrift returns null', async () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const runtime = createMockRuntime()
       runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
       runtime.setProbeDrift(null)
@@ -912,7 +913,7 @@ allow-stale-base: true`
     })
 
     it('does not call probeWorktreeDrift when coordinator has no worktree selector', async () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const runtime = createMockRuntime()
       runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
       const logs: string[] = []
@@ -946,7 +947,7 @@ allow-stale-base: true`
     })
 
     it('proceeds without drift when probeWorktreeDrift throws', async () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const runtime = createMockRuntime()
       runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
       runtime.throwProbeDrift = new Error('boom')
