@@ -1,3 +1,4 @@
+import { getLegacyOpenCodeEnvKeysToDelete } from '../../opencode/legacy-shared-config-dir'
 import { restoreOrStripOverlayEnv } from '../../../shared/agent-overlay-env'
 import { delimiter } from 'node:path'
 import { dropInheritedOrcaFishHistory } from '../../fish-history-session'
@@ -54,6 +55,12 @@ function deleteRequestedDaemonEnvKeys(
   env: Record<string, string>,
   keys: readonly string[] | undefined
 ): void {
+  const userDataPath = process.env.ORCA_USER_DATA_PATH
+  if (userDataPath) {
+    for (const key of getLegacyOpenCodeEnvKeysToDelete(env, userDataPath, {})) {
+      delete env[key]
+    }
+  }
   // Why: persistent daemon state can differ from Electron; delete CODEX_HOME only when its Orca overlay owns it.
   const deleteOrcaOwnedCodexHome =
     keys?.includes('ORCA_CODEX_HOME') === true &&
@@ -221,4 +228,13 @@ export function finalizeDaemonPtyEnvironment(
   stripLegacyTerminalShimEnv(env, process.platform)
   dropIncoherentCondaActivationEnv(env, process.platform)
   stripPiProcessOwnerEnv(env)
+  // A live daemon pins this runtime across app updates; callers cannot name the host executable.
+  for (const key of Object.keys(env)) {
+    if (key.toUpperCase() === 'ORCA_AGENT_HOOK_NODE') {
+      delete env[key]
+    }
+  }
+  if (process.platform === 'win32') {
+    env.ORCA_AGENT_HOOK_NODE = process.execPath
+  }
 }

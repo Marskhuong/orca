@@ -67,11 +67,7 @@ const buildersByAgent = new Map<string, CommandBuilders>([
   [
     'claude',
     {
-      local: (path) =>
-        [true, false].map(
-          (gitBashAvailable) =>
-            getManagedLifecycleHook(path, CLAUDE_HOOK_SETTINGS, { gitBashAvailable }).command
-        ),
+      local: (path) => [getManagedLifecycleHook(path, CLAUDE_HOOK_SETTINGS).command],
       remote: (path) => [getClaudeRemoteCommand(path)]
     }
   ],
@@ -89,6 +85,48 @@ const buildersByAgent = new Map<string, CommandBuilders>([
         getManagedLifecycleHook(path, {
           configDirName: '.qoder',
           scriptBaseName: 'qoder-hook',
+          usesWindowsCompatLauncher: true,
+          windowsHookShell: 'powershell'
+        }).command
+      ],
+      remote: (path) => [getClaudeRemoteCommand(path)]
+    }
+  ],
+  [
+    'qoder-cn',
+    {
+      local: (path) => [
+        getManagedLifecycleHook(path, {
+          configDirName: '.qoder-cn',
+          scriptBaseName: 'qoder-cn-hook',
+          usesWindowsCompatLauncher: true,
+          windowsHookShell: 'powershell'
+        }).command
+      ],
+      remote: (path) => [getClaudeRemoteCommand(path)]
+    }
+  ],
+  [
+    'qwen-code',
+    {
+      local: (path) => [
+        getManagedLifecycleHook(path, {
+          configDirName: '.qwen',
+          scriptBaseName: 'qwen-code-hook',
+          usesWindowsCompatLauncher: true,
+          windowsHookShell: 'powershell'
+        }).command
+      ],
+      remote: (path) => [getClaudeRemoteCommand(path)]
+    }
+  ],
+  [
+    'codebuddy',
+    {
+      local: (path) => [
+        getManagedLifecycleHook(path, {
+          configDirName: '.codebuddy',
+          scriptBaseName: 'codebuddy-hook',
           usesWindowsCompatLauncher: true,
           windowsHookShell: 'powershell'
         }).command
@@ -223,8 +261,11 @@ describe('managed hook command contract', () => {
         // Native PowerShell hooks evaluate these variables without Grok's dollar-byte scanner.
         const scannedCommand =
           platform === 'win32' &&
-          ((agent === 'codex' && command.startsWith('if (Test-Path')) ||
-            (agent === 'qoder' && command.startsWith('$scriptPath = Join-Path')))
+          (agent === 'qoder' ||
+            agent === 'qoder-cn' ||
+            agent === 'qwen-code' ||
+            agent === 'codebuddy') &&
+          command.startsWith('$scriptPath = Join-Path')
             ? command
                 .replaceAll('$LASTEXITCODE', '')
                 .replaceAll('$env:', '')

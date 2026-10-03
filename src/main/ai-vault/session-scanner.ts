@@ -1,3 +1,4 @@
+import { candidateFileTime } from './antigravity-transcript-candidates'
 import type {
   AiVaultListResult,
   AiVaultScanIssue,
@@ -27,7 +28,11 @@ import { getSessionParseCacheEntry } from './session-parse-cache-store'
 import { describeSkippedTranscriptRecords } from './session-transcript-record-budget'
 import { canStopParsingSessions } from './session-scan-cutoff'
 import { discoverInScopeCwdBucketFiles } from './session-scanner-scope-discovery'
-import { CLAUDE_CWD_BUCKET_LAYOUT, PI_CWD_BUCKET_LAYOUT } from './session-cwd-bucket-layouts'
+import {
+  CLAUDE_CWD_BUCKET_LAYOUT,
+  PI_CWD_BUCKET_LAYOUT,
+  CODEBUDDY_CWD_BUCKET_LAYOUT
+} from './session-cwd-bucket-layouts'
 import { discoverAiVaultSessionSources } from './session-scanner-source-discovery'
 import { cursorChatMetaRefusals, withCursorChatMetaScan } from './session-scanner-cursor-chat-meta'
 import type {
@@ -74,8 +79,8 @@ export async function scanAiVaultSessions(
         const executionHostId = options.executionHostId ?? LOCAL_EXECUTION_HOST_ID
         const issues: AiVaultScanIssue[] = []
         const parseStats = createSessionParseStats()
-        const antigravityWorkspaceResolver = createAntigravityWorkspaceResolver(
-          readLocalAntigravityHistory
+        const antigravityWorkspaceResolver = createAntigravityWorkspaceResolver((path) =>
+          readLocalAntigravityHistory(path, options.signal)
         )
         // Why: persisted entries must be seeded before any candidate is parsed, or
         // the cold scan gains nothing from the cache file (#9210).
@@ -166,7 +171,11 @@ function mergeSessions(
 
 // Agents whose on-disk layout names a directory per cwd, so a scope's older
 // sessions can be found without reading every transcript's header.
-const CWD_BUCKET_LAYOUTS = [CLAUDE_CWD_BUCKET_LAYOUT, PI_CWD_BUCKET_LAYOUT]
+const CWD_BUCKET_LAYOUTS = [
+  CLAUDE_CWD_BUCKET_LAYOUT,
+  PI_CWD_BUCKET_LAYOUT,
+  CODEBUDDY_CWD_BUCKET_LAYOUT
+]
 
 async function scanInScopeSessions(args: {
   discoveries: SessionFileDiscovery[]
@@ -225,7 +234,9 @@ async function parseSessionCandidates(args: {
 
   while (index < args.candidates.length) {
     throwIfAiVaultScanCancelled(args.signal)
-    if (canStopParsingSessions(sessions, args.limit, args.candidates[index]?.file.mtimeMs)) {
+    if (
+      canStopParsingSessions(sessions, args.limit, candidateFileTime(args.candidates[index]?.file))
+    ) {
       break
     }
 

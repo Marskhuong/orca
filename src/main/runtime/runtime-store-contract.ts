@@ -103,6 +103,7 @@ export type RuntimeStore = {
     minimaxGroupId?: GlobalSettings['minimaxGroupId']
     minimaxUsageModels?: GlobalSettings['minimaxUsageModels']
     minimaxEndpoint?: GlobalSettings['minimaxEndpoint']
+    zcodePlanSite?: GlobalSettings['zcodePlanSite']
     prBotAuthorOverrides?: GlobalSettings['prBotAuthorOverrides']
     artifactSharingEnabled?: GlobalSettings['artifactSharingEnabled']
     terminalQuickCommands?: GlobalSettings['terminalQuickCommands']
@@ -125,6 +126,8 @@ export type RuntimeStore = {
     nativeChatInheritShellEnvironment?: GlobalSettings['nativeChatInheritShellEnvironment']
     nativeChatShellEnvironmentVariables?: GlobalSettings['nativeChatShellEnvironmentVariables']
     aiVaultSearch?: GlobalSettings['aiVaultSearch']
+    sourceControlAi?: GlobalSettings['sourceControlAi']
+    commitMessageAi?: GlobalSettings['commitMessageAi']
   }
   // Why: narrow to `unknown` return so test mocks can return void without
   // a cast. The runtime never reads the return value — the persisted value

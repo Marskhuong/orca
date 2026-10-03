@@ -8,6 +8,7 @@ import type { TuiAgent } from './tui-agent'
 export const TUI_AGENT_DISPLAY_NAMES: Record<TuiAgent, string> = {
   claude: 'Claude',
   'claude-agent-teams': 'Claude Agent Teams',
+  codebuddy: 'CodeBuddy',
   openclaude: 'OpenClaude',
   codex: 'Codex',
   devin: 'Devin',
@@ -24,6 +25,7 @@ export const TUI_AGENT_DISPLAY_NAMES: Record<TuiAgent, string> = {
   omp: 'OMP',
   'prime-agent': 'Prime Agent',
   qoder: 'Qoder CLI',
+  'qoder-cn': 'Qoder CLI China',
   gemini: 'Gemini',
   antigravity: 'Antigravity',
   aider: 'Aider',

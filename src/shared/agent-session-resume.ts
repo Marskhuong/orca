@@ -5,8 +5,11 @@ import type { TuiAgent } from './tui-agent'
 
 export const RESUMABLE_TUI_AGENTS = [
   'claude',
+  'codebuddy',
   'codex',
   'qoder',
+  'qoder-cn',
+  'qwen-code',
   'gemini',
   'antigravity',
   'opencode',
@@ -19,6 +22,7 @@ export const RESUMABLE_TUI_AGENTS = [
   'omp',
   'prime-agent',
   'copilot',
+  'cursor',
   'kimi',
   'muse',
   'zcode',
@@ -195,7 +199,10 @@ export function extractAgentProviderSession(
     // Native-chat agents: also capture the hook's authoritative transcript_path,
     // since recent Claude Code names the transcript file with a UUID that differs
     // from the hook session_id (so the id-based glob no longer finds it).
+    case 'qoder-cn':
+    case 'qwen-code':
     case 'qoder':
+    case 'codebuddy':
     case 'claude':
     case 'codex': {
       const id = readSessionId(payload, ['session_id'])
@@ -262,8 +269,11 @@ export function extractAgentProviderSession(
       const id = readSessionId(payload, ['session_id', 'sessionId'])
       return id ? { key: 'session_id', id } : null
     }
+    case 'cursor': {
+      const id = readSessionId(payload, ['conversation_id'])
+      return id ? { key: 'conversation_id', id } : null
+    }
     case 'amp':
-    case 'cursor':
     case 'command-code':
     case 'hermes':
       return null
@@ -277,10 +287,18 @@ export function getAgentResumeArgv(
 ): string[] | null {
   const id = providerSession.id
   switch (agent) {
+    case 'codebuddy':
+      return providerSession.key === 'session_id' ? ['codebuddy', '--resume', id] : null
     case 'claude':
       return providerSession.key === 'session_id' ? ['claude', '--resume', id] : null
+    case 'cursor':
+      return providerSession.key === 'conversation_id' ? ['cursor-agent', '--resume', id] : null
     case 'codex':
       return providerSession.key === 'session_id' ? ['codex', 'resume', id] : null
+    case 'qoder-cn':
+      return providerSession.key === 'session_id' ? ['qoderclicn', '--resume', id] : null
+    case 'qwen-code':
+      return providerSession.key === 'session_id' ? ['qwen', '--resume', id] : null
     case 'qoder':
       return providerSession.key === 'session_id' ? ['qodercli', '--resume', id] : null
     case 'gemini':

@@ -698,8 +698,8 @@ describe('StructuredAgentSessionStatusBridge', () => {
     expect(mocks.setAgentStatus).not.toHaveBeenCalled()
   })
 
-  it('re-renders a startup-phase reader only when the phase changes', async () => {
-    const phases: (string | null)[] = []
+  it('re-renders a startup reader only when its phase changes', async () => {
+    const phases: ReturnType<typeof useStructuredAgentSessionHostExecutionPhase>[] = []
     function PhaseProbe(): null {
       phases.push(useStructuredAgentSessionHostExecutionPhase('session-1', { kind: 'local' }))
       return null
@@ -716,10 +716,20 @@ describe('StructuredAgentSessionStatusBridge', () => {
       })
     )
     expect(phases).toHaveLength(rendersWhileStarting)
+    // Older hosts (v1.4.218 on) also send which provider child is starting; nothing reads it.
+    const olderHostChild = { hostExecutionChild: { generation: 'child-1', fence: 2 } }
+    act(() =>
+      feed().emit({
+        type: 'status',
+        session: summary({ hostExecutionPhase: 'starting', ...olderHostChild })
+      })
+    )
+    expect(phases).toHaveLength(rendersWhileStarting)
 
     act(() => feed().emit({ type: 'status', session: summary({ hostExecutionPhase: 'ready' }) }))
     expect(phases.at(-1)).toBe('ready')
-    expect(phases).toContain('starting')
+    act(() => feed().emit({ type: 'status', session: summary({ hostExecutionPhase: 'starting' }) }))
+    expect(phases.at(-1)).toBe('starting')
   })
 })
 

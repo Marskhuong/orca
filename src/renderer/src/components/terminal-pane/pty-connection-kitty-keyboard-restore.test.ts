@@ -135,14 +135,14 @@ function createDeps(overrides: Record<string, unknown> = {}) {
 
 // Why: xterm and the pane mirror must end every restore on the same kitty flags.
 describe('connectPanePty kitty keyboard restore', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetModules()
     vi.clearAllMocks()
     transportFactoryQueue = []
     createdTransportOptions = []
     storeSubscribers = []
     mockStoreState = createInitialStoreState(() => mockStoreState)
-    installTerminalTestGlobals()
+    await installTerminalTestGlobals()
   })
 
   afterEach(async () => {
@@ -214,5 +214,20 @@ describe('connectPanePty kitty keyboard restore', () => {
     expect(pane.terminal.write).toHaveBeenCalledWith(PROCESS_BOUNDARY_GROUND, expect.any(Function))
     expect(mirror.snapshotFlags).toBe(0)
     expect(mirror.isAlternateScreen).toBe(false)
+  })
+
+  it('grounds xterm and the mirror together on Reset Terminal and asks the host to ground', async () => {
+    const { pane, mirror } = await reattachWithSnapshotFlags(true)
+    expect(mirror?.flags).toBe(31)
+    const { resetTerminalInputModes } = await import('./terminal-input-mode-reset')
+
+    resetTerminalInputModes('tab-pty')
+
+    expect(pane.terminal.write).toHaveBeenLastCalledWith(
+      PROCESS_BOUNDARY_GROUND,
+      expect.any(Function)
+    )
+    expect(mirror?.flags).toBe(0)
+    expect(window.api.pty.resetInputModes).toHaveBeenCalledWith('tab-pty')
   })
 })
