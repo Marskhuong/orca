@@ -1,7 +1,8 @@
+import { createCapacityReadyOrchestrationDb } from '../../capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
 import { isOrcaSessionId } from '../../../../../shared/orca-session-address'
 import { mintStructuredWorkerHandle } from '../../../structured-worker-identity'
-import { OrchestrationDb } from '../orchestration-db'
+import type { OrchestrationDb } from '../orchestration-db'
 
 const EARLIER_ORCA_SESSION_ID = '7d9f1b3e-5a2c-4e6b-8f0a-1c3e5a7b9d42'
 const WORKER_PANE = 'tab_worker:88888888-8888-4888-8888-888888888888'
@@ -30,7 +31,7 @@ describe('assignee identity writers', () => {
   }
 
   it('clears the Orca session id when worker authority names the assignee', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const dispatchId = startingDispatchWithOrcaSessionId(db)
 
     db.prepareStartingWorkerAuthority({
@@ -50,7 +51,7 @@ describe('assignee identity writers', () => {
   })
 
   it('clears the Orca session id when a failed start records the terminal it owned', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const dispatchId = startingDispatchWithOrcaSessionId(db)
     db.recordCreatedWorkerTerminalCustody({
       dispatchId,

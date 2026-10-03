@@ -1,12 +1,13 @@
+import { createCapacityReadyOrchestrationDb } from '../../capacity-ready-db.test-support'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from '../orchestration-db'
+import type { OrchestrationDb } from '../orchestration-db'
 
 const THIS_RUNTIME = 'epoch_this_runtime'
 
 describe('worker-abandon settles a stuck worker', () => {
   let db: OrchestrationDb
   beforeEach(() => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
   })
   afterEach(() => db.close())
 

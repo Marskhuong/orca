@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 // `worker-show` must distinguish a worker parked on a human prompt (STA-3714, STA-4513).
 // Deliberately unmocked below the RPC so detector, plumbing, and RPC shape are all covered.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
 
@@ -88,7 +89,7 @@ describe('worker-show interactive wait (STA-3714, STA-4513)', () => {
     })
     runtime.onPtyData(PTY_ID, paneOutput, Date.now())
 
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'supervise lanes',

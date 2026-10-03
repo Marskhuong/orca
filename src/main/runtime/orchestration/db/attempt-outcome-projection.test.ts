@@ -1,8 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from '../capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './orchestration-db'
+import type { OrchestrationDb } from './orchestration-db'
 import { projectAttemptOutcome } from './attempt-outcome-projection'
 import { createRootDispatch } from './root-dispatch-test-fixture'
 import type {
@@ -47,7 +48,7 @@ describe('durable Attempt observation and outcome projection', () => {
   afterEach(() => db?.close())
 
   function createAttempt(): { taskId: string; dispatchId: string } {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'observe outcome' })
     const dispatch = createRootDispatch(db, task.id, 'term_observed')
     return { taskId: task.id, dispatchId: dispatch.id }
@@ -161,7 +162,7 @@ describe('durable Attempt observation and outcome projection', () => {
     const dir = mkdtempSync(join(tmpdir(), 'orca-attempt-observation-'))
     const path = join(dir, 'orchestration.sqlite')
     try {
-      db = new OrchestrationDb(path)
+      db = createCapacityReadyOrchestrationDb(path)
       const task = db.createTask({
         runId: 'run_legacy_local',
         spec: 'durable observation'
@@ -176,7 +177,7 @@ describe('durable Attempt observation and outcome projection', () => {
         })
       )
       db.close()
-      db = new OrchestrationDb(path)
+      db = createCapacityReadyOrchestrationDb(path)
 
       expect(projectOutcome(db, dispatch.id, { execution: 1_001, home: 50_001 })).toMatchObject({
         outcome: 'outcome_unknown',
@@ -191,7 +192,7 @@ describe('durable Attempt observation and outcome projection', () => {
   })
 
   it('keeps worker_done settlement as the atomic success fast path', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({
       runId: 'run_legacy_local',
       spec: 'worker_done fast path'

@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -5,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { RuntimeAgentOrchestrationProjection } from '../../runtime-agent-orchestration-projection'
 import type { OrchestrationCompatibilityTerminalAuthority } from '../../runtime-terminal-contracts'
 import type { RuntimeLeafRecord } from '../../runtime-terminal-state-records'
-import { OrchestrationDb } from '../db'
+import type { OrchestrationDb } from '../db'
 import { createRootDispatch } from './root-dispatch-test-fixture'
 
 const COORDINATOR_HANDLE = 'term_coordinator'
@@ -35,7 +36,7 @@ afterEach(() => {
 })
 
 function openDatabase(path: string): OrchestrationDb {
-  const db = new OrchestrationDb(path)
+  const db = createCapacityReadyOrchestrationDb(path)
   openDatabases.push(db)
   return db
 }

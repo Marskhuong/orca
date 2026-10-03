@@ -1,9 +1,13 @@
+import {
+  createCapacityReadyOrchestrationDb,
+  markRunFixtureAsRemote
+} from '../../capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../../../sqlite/sync-database'
-import { OrchestrationDb } from '../orchestration-db'
+import type { OrchestrationDb } from '../orchestration-db'
 import { dropDerivedDeliverySchema } from './derived-delivery-test-fixture'
 import { resolveOrchestrationMigrationStartVersion } from '../../orchestration-schema-version-skew'
 import { createRootDispatch, reattachDispatchConsumer } from '../root-dispatch-test-fixture'
@@ -21,7 +25,7 @@ describe('derived delivery migration', () => {
     }
   })
   function open(path: string) {
-    const db = new OrchestrationDb(path)
+    const db = createCapacityReadyOrchestrationDb(path)
     connections.push(db)
     return db
   }
@@ -181,6 +185,7 @@ describe('derived delivery migration', () => {
           ? createRootDispatch(db, db.createTask({ spec: 'work', runId: run.id }).id, 'worker').id
           : 'ctx_remote'
       if (consumerSource === 'attachment') {
+        markRunFixtureAsRemote(db, run.id)
         db.createRemoteDispatchAttachment({
           runId: run.id,
           dispatchId,

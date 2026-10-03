@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from '../capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
   structuredWorkerProcessIncarnation
 } from '../../structured-worker-identity'
-import { OrchestrationDb } from '../db'
+import type { OrchestrationDb } from '../db'
 import { AmbiguousDispatchParentError } from './dispatch-depth'
 import { backfillStructuredWorkerOrcaSessionIds } from './schema/structured-worker-orca-session-backfill'
 
@@ -21,7 +22,7 @@ describe('nested worker depth', () => {
   afterEach(() => db?.close())
 
   function coordinatorDispatchesWorker(maxDepth = UNCAPPED) {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'root task' })
     const worker = db.createDispatchContext({
       taskId: task.id,
@@ -107,7 +108,7 @@ describe('nested worker depth', () => {
   })
 
   it('resolves an unknown terminal to root depth', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     expect(db.resolveCreatorDepth({ kind: 'terminal', handle: 'term_nobody' })).toBe(0)
   })
 
@@ -130,7 +131,7 @@ describe('nested worker depth', () => {
     // worker must still block nesting. See docs/reference/ssh-execution-boundary.md.
     for (const state of ['starting', 'ready', 'start_unknown', 'stopping', 'stop_unknown']) {
       it(`counts a '${state}' attachment as a live parent`, () => {
-        db = new OrchestrationDb(':memory:')
+        db = createCapacityReadyOrchestrationDb(':memory:')
         attachRemoteWorker(state, 1)
         expect(
           db.resolveCreatorDepth({
@@ -145,7 +146,7 @@ describe('nested worker depth', () => {
 
     for (const state of ['succeeded', 'failed', 'stopped', 'abandoned']) {
       it(`does not count a settled '${state}' attachment`, () => {
-        db = new OrchestrationDb(':memory:')
+        db = createCapacityReadyOrchestrationDb(':memory:')
         attachRemoteWorker(state, 1)
         expect(
           db.resolveCreatorDepth({
@@ -159,7 +160,7 @@ describe('nested worker depth', () => {
     }
 
     it('ignores an attachment whose pane was reused by a new process', () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       attachRemoteWorker('ready', 2)
       expect(
         db.resolveCreatorDepth({
@@ -172,7 +173,7 @@ describe('nested worker depth', () => {
     })
 
     it('fails closed when one identity matches two live attachments', () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       attachRemoteWorker('ready', 1)
       attachRemoteWorker('starting', 2)
       expect(() =>
@@ -187,7 +188,7 @@ describe('nested worker depth', () => {
 
     it('takes the maximum when a process holds both a local and a remote role', () => {
       // Query order must not decide the answer: the deeper role governs.
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const task = db.createTask({
         runId: 'run_legacy_local',
         spec: 'local role'
@@ -228,7 +229,7 @@ describe('nested worker depth', () => {
     }
 
     it('stamps depth 1 for a root coordinator', () => {
-      db = new OrchestrationDb(':memory:')
+      db = createCapacityReadyOrchestrationDb(':memory:')
       const task = db.createTask({
         runId: 'run_legacy_local',
         spec: 'root work'
@@ -274,7 +275,7 @@ describe('nested worker depth', () => {
   it('keeps a local row with a null process incarnation eligible as a parent', () => {
     // Context-only dispatch stores null on purpose; requiring an incarnation
     // locally would silently drop real parents and fail open.
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({
       runId: 'run_legacy_local',
       spec: 'context only'
@@ -293,7 +294,7 @@ describe('nested worker depth', () => {
   // Pinned for the reader that switches self-dispatch detection to Orca session id equality: equal
   // creator and assignee ids must keep meaning bookkeeping, and different ones delegation.
   it('records equal Orca session ids exactly when a structured session dispatches to itself', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const sessionId = '5c7e9a1d-3f6b-4c8e-8d2a-4b6c8e0a2d36'
     const self = {
       kind: 'terminal',

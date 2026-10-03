@@ -1,3 +1,5 @@
+import { RUN_CAPACITY_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-run-capacity'
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RuntimeRpcResponse } from '../../../../../../shared/runtime-rpc-envelope'
 import {
@@ -5,7 +7,7 @@ import {
   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrchestrationEnvironmentTransport } from '../../../../orchestration/environment-transport'
 import { RpcDispatcher } from '../../../dispatcher'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
@@ -22,7 +24,7 @@ describe('orchestration migration behavior', () => {
   })
 
   function createRuntime(): { db: OrchestrationDb; runtime: OrcaRuntimeService } {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     databases.push(db)
@@ -255,7 +257,7 @@ describe('orchestration migration behavior', () => {
   })
 
   it('runs one real contract preflight before federated attach', async () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'federated worker',
       coordinatorHandle: 'term_coord',
@@ -282,6 +284,7 @@ describe('orchestration migration behavior', () => {
                 ...runtime.getStatus(),
                 capabilities: [
                   ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
+                  RUN_CAPACITY_RUNTIME_CAPABILITY,
                   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
                 ]
               },

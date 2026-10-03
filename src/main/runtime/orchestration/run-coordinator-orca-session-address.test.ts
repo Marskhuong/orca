@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,7 +13,7 @@ import {
   mintStructuredWorkerPaneKey,
   structuredWorkerProcessIncarnation
 } from '../structured-worker-identity'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { backfillStructuredWorkerOrcaSessionIds } from './db/schema/structured-worker-orca-session-backfill'
 
 const CHAT_SESSION_ID = testOrcaSessionId('3a5c7e9b-1d4f-4a6c-8b0e-2f4a6c8e0b14')
@@ -39,7 +40,7 @@ function tempDbPath(tempRoots: string[]): string {
 function refillAfterReopen(db: OrchestrationDb, path: string, runId: string): OrchestrationDb {
   db.db.prepare('DELETE FROM run_coordinator_handles WHERE run_id = ?').run(runId)
   db.close()
-  return new OrchestrationDb(path)
+  return createCapacityReadyOrchestrationDb(path)
 }
 
 /** A handle-less coordinator row; no writer records one until the caller resolver lands. */
@@ -67,7 +68,7 @@ describe('Run coordinator Orca session address', () => {
   })
 
   it('remembers a handle-less session coordinator by the address derived from its bare id', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     insertSessionCoordinatedRun(db, 'run_session')
 
     // The column holds the bare id; only the remembered address carries the session: prefix.
@@ -89,7 +90,7 @@ describe('Run coordinator Orca session address', () => {
 
   it('remembers an Orca session id bound by update, and again on reopen when the cache row is gone', () => {
     const path = tempDbPath(tempRoots)
-    db = new OrchestrationDb(path)
+    db = createCapacityReadyOrchestrationDb(path)
     db.db
       .prepare(
         `INSERT INTO runs (id, objective, consumer_generation, legacy)
@@ -111,7 +112,7 @@ describe('Run coordinator Orca session address', () => {
 
   it('remembers a PTY coordinator written by insert, update and refill by exactly its handle', () => {
     const path = tempDbPath(tempRoots)
-    db = new OrchestrationDb(path)
+    db = createCapacityReadyOrchestrationDb(path)
     db.db
       .prepare(
         `INSERT INTO runs (id, objective, coordinator_handle, consumer_generation, legacy)
@@ -133,7 +134,7 @@ describe('Run coordinator Orca session address', () => {
 
   it('remembers a structured-worker coordinator by its handle and its session address', () => {
     const path = tempDbPath(tempRoots)
-    db = new OrchestrationDb(path)
+    db = createCapacityReadyOrchestrationDb(path)
     const handle = mintStructuredWorkerHandle()
     db.db
       .prepare(
@@ -169,7 +170,7 @@ describe('Run coordinator Orca session address', () => {
 
   it('adds no session address for an Orca session id at a stale generation', () => {
     const path = tempDbPath(tempRoots)
-    db = new OrchestrationDb(path)
+    db = createCapacityReadyOrchestrationDb(path)
     db.db
       .prepare(
         `INSERT INTO runs (
@@ -200,7 +201,7 @@ describe('Run coordinator Orca session address', () => {
   })
 
   it('keeps PTY coordinators remembered by handle alone', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'pty',
       coordinatorHandle: 'term_first',
@@ -217,7 +218,7 @@ describe('Run coordinator Orca session address', () => {
   })
 
   it("never leaves a replaced structured coordinator's Orca session id on the Run", () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const handle = mintStructuredWorkerHandle()
     const pane = mintStructuredWorkerPaneKey(WORKER_SESSION_ID)
     const ownTask = db.createTask({ runId: 'run_legacy_local', spec: 'structured worker' })

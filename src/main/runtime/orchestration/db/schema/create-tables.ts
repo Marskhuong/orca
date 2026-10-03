@@ -2,11 +2,13 @@ import type { OrchestrationDb } from '../orchestration-db'
 import { createCoreTablesSql } from './create-core-tables-sql'
 import { createGraphTablesSql } from './create-graph-tables-sql'
 import { DERIVED_DELIVERY_SCHEMA_SQL } from './migrate-v41'
+import { RUN_CAPACITY_SCHEMA_SQL } from '../../run-capacity-state'
 
 export function createTables(this: OrchestrationDb): void {
   this.db.exec(`${createCoreTablesSql()}\n${createGraphTablesSql()}`)
   this.createMailboxDeliveryIndexesIfPossible()
   this.db.exec(DERIVED_DELIVERY_SCHEMA_SQL)
+  this.db.exec(RUN_CAPACITY_SCHEMA_SQL)
 }
 
 export type CreateTablesMethods = {

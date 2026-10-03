@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { vi } from 'vitest'
 import type { AgentSessionLease, AgentSessionRecord } from '../../../shared/agent-session-record'
 import {
@@ -9,7 +10,7 @@ import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version
 import { formatOrcaSessionAddress } from '../../../shared/orca-session-address'
 import { testOrcaSessionId } from '../../../shared/orca-session-address-test-fixture'
 import { OrcaRuntimeService } from '../orca-runtime'
-import { OrchestrationDb } from '../orchestration/db'
+import type { OrchestrationDb } from '../orchestration/db'
 import { structuredWorkerIdentities } from '../structured-worker-identity'
 import type { RpcRequest, RpcResponse } from './core'
 import { RpcDispatcher } from './dispatcher'
@@ -65,7 +66,7 @@ export type SessionCallerHarness = {
 }
 
 export function createSessionCallerHarness(hostRef: SessionHostRef): SessionCallerHarness {
-  const db = new OrchestrationDb(':memory:')
+  const db = createCapacityReadyOrchestrationDb(':memory:')
   const runtime = new OrcaRuntimeService()
   runtime.setOrchestrationDb(db)
   vi.spyOn(runtime, 'ensureStructuredAgentSessionHost').mockResolvedValue()

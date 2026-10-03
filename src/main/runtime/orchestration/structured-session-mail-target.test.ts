@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -98,7 +99,7 @@ function chatCoordinatedRun(): string {
 }
 
 beforeEach(() => {
-  db = new OrchestrationDb(':memory:')
+  db = createCapacityReadyOrchestrationDb(':memory:')
   hostRef.current = null
 })
 
@@ -258,7 +259,7 @@ describe('the idle edge after a restart, before any orchestration call', () => {
     // The strand this pins: the edge read the raw database field, null until the first
     // orchestration RPC opened it, so a restarted chat's idle edges silently redrove nothing.
     installStore(chatRecord())
-    const stored = new OrchestrationDb(join(userData, 'orchestration.db'))
+    const stored = createCapacityReadyOrchestrationDb(join(userData, 'orchestration.db'))
     const runId = stored.createRun({
       objective: 'o',
       coordinatorHandle: null,

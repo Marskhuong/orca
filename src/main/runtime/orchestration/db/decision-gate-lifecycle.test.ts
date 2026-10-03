@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from '../capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './orchestration-db'
+import type { OrchestrationDb } from './orchestration-db'
 import { createRootDispatch } from './root-dispatch-test-fixture'
 
 describe('decision-gate lifecycle transitions', () => {
@@ -8,7 +9,7 @@ describe('decision-gate lifecycle transitions', () => {
   afterEach(() => db?.close())
 
   it('blocks the dispatched Task when creating a gate', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'gate blocks task' })
     createRootDispatch(db, task.id, 'term_gate')
     expect(db.getTask(task.id)?.status).toBe('dispatched')
@@ -19,7 +20,7 @@ describe('decision-gate lifecycle transitions', () => {
   })
 
   it('rolls back the gate row when the Task transition cannot commit', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'atomic gate creation' })
     const dispatch = createRootDispatch(db, task.id, 'term_gate')
     db.db.exec(`

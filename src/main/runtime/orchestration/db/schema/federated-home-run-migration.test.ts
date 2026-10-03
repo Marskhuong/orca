@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from '../../capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../shared/protocol-version'
-import { OrchestrationDb } from '../orchestration-db'
+import type { OrchestrationDb } from '../orchestration-db'
 import { SCHEMA_VERSION, federatedStubHomeRunId } from '../contract-constants'
 import { migrateV40 } from './migrate-v40'
 import { importFederatedControlMessage } from '../../federation-control-message'
@@ -11,7 +12,7 @@ import { importFederatedControlMessage } from '../../federation-control-message'
 describe('federated home Run migration', () => {
   let db: OrchestrationDb
   beforeEach(() => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
   })
   afterEach(() => db.close())
 
@@ -72,7 +73,7 @@ describe('federated home Run migration', () => {
     const dir = mkdtempSync(join(tmpdir(), 'orca-federated-home-run-'))
     const dbPath = join(dir, 'orchestration.db')
     try {
-      const upgraded = new OrchestrationDb(dbPath)
+      const upgraded = createCapacityReadyOrchestrationDb(dbPath)
       expect(upgraded.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
       // v1.4.198's insert shape: no home_run_id column, so the DEFAULT '' lands.
       upgraded.db.exec(`INSERT INTO remote_dispatch_attachments
@@ -88,7 +89,7 @@ describe('federated home Run migration', () => {
       ).toThrow(/Run not found/)
       upgraded.close()
 
-      const reopened = new OrchestrationDb(dbPath)
+      const reopened = createCapacityReadyOrchestrationDb(dbPath)
       try {
         const stubRunId = federatedStubHomeRunId('ctx_rolled_back')
         expect(reopened.getRemoteDispatchAttachment('ctx_rolled_back')?.home_run_id).toBe(stubRunId)

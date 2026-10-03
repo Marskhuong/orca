@@ -1,3 +1,5 @@
+import { recordRunCapacity } from '../../../../orchestration/run-capacity-state'
+import { capacityEvidence } from '../../../../../../shared/orchestration-run-capacity.test-support'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
 import { createOrchestrationWorkerReleaseHarness } from './worker-release.test-support'
@@ -19,11 +21,13 @@ describe('orchestration worker-list Run scope (runtime)', () => {
   }
 
   function createOtherRun(): string {
-    return h.db.createRun({
+    const runId = h.db.createRun({
       objective: 'Another Run',
       coordinatorHandle: 'term_other',
       coordinatorPaneKey: 'tab_other:cccccccc-cccc-4ccc-8ccc-cccccccccccc'
     }).id
+    recordRunCapacity(h.db, runId, capacityEvidence())
+    return runId
   }
 
   it('resolves the bound Run from the coordinator handle and lists only its dispatches', async () => {

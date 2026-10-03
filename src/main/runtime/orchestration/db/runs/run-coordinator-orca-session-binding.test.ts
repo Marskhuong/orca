@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from '../../capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
   structuredWorkerProcessIncarnation
 } from '../../../structured-worker-identity'
-import { OrchestrationDb } from '../../db'
+import type { OrchestrationDb } from '../../db'
 import {
   formatOrcaSessionAddress,
   type OrcaSessionId
@@ -83,7 +84,7 @@ describe('Run binding by Orca session id', () => {
   }
 
   it('binds a handle-less session by its Orca session id and remembers its session address', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = createChatRun(CHAT_X_ID)
 
     expect(db.getRunRaw(run.id)).toMatchObject({
@@ -98,7 +99,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it("never unbinds another session's Run, and unbinds only the same session's other Runs", () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const ptyRun = db.createRun({
       objective: 'pty',
       coordinatorHandle: 'term_pty',
@@ -133,7 +134,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it('stops counting an Orca session id once a binary without the column rebinds the Run to a terminal', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = createChatRun(CHAT_X_ID)
     olderBinaryRebind(run.id, 'term_taker', PTY_PANE)
 
@@ -150,7 +151,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it('does not hand a chat back a Run an older binary rebound and then unbound', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = createChatRun(CHAT_X_ID)
     olderBinaryRebind(run.id, 'term_taker', PTY_PANE)
     olderBinaryUnbind(run.id)
@@ -167,7 +168,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it("stops counting a structured worker's Orca session id once an older binary unbinds its Run", () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const worker = structuredWorker()
     const run = db.createRun({
       objective: 'worker coordinates',
@@ -182,7 +183,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it('remembers a coordinating structured worker at its handle, and the v42 trigger its inert session address', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const worker = structuredWorker()
     const run = db.createRun({
       objective: 'worker coordinates',
@@ -197,7 +198,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it('hands a Run to a different session like a terminal takeover: fenced, rerouted, remembered', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = createChatRun(CHAT_X_ID)
     const pending = directMail(run.id, 'term_late')
     db.db.prepare('UPDATE messages SET to_handle = ? WHERE id = ?').run(CHAT_X, pending.id)
@@ -221,7 +222,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it('rebinding the same session is not a new consumer, and fills a missing Orca session id in place', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const worker = structuredWorker()
     const run = db.createRun({
       objective: 'worker coordinates',
@@ -250,7 +251,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it("reroutes and remembers each worker's one mailbox address when one takes a Run from another", () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const first = structuredWorker()
     const second = structuredWorker(OTHER_WORKER_SESSION)
     const run = db.createRun({
@@ -279,7 +280,7 @@ describe('Run binding by Orca session id', () => {
   })
 
   it("reroutes a worker's mailbox address when its next Run unbinds the last", () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const worker = structuredWorker()
     const bind = {
       coordinatorHandle: worker.terminalHandle,
@@ -305,7 +306,7 @@ describe('Dispatch Orca session ids recorded by every writer', () => {
   })
 
   it('records the assignee Orca session id from a structured incarnation and a creator one', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'r',
       coordinatorHandle: null,
@@ -340,7 +341,7 @@ describe('Dispatch Orca session ids recorded by every writer', () => {
   })
 
   it('nests under the Dispatch a handle-less creator is assigned by its Orca session id', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'r',
       coordinatorHandle: 'term_c',
@@ -368,7 +369,7 @@ describe('Dispatch Orca session ids recorded by every writer', () => {
   })
 
   it('records the starting creator and the attached assignee of a worker-start', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'r',
       coordinatorHandle: null,

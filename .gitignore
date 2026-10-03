@@ -118,6 +118,7 @@ docs/**
 !docs/agent-skill-sharing-implementation-checklist.md
 !docs/mobile-terminal-shortcut-bar.md
 !docs/reference/
+!docs/reference/run-capacity-dispatch-gate.md
 !docs/reference/agent-pty-transcript-capture.md
 !docs/reference/agent-session-search-query-tuning.md
 !docs/reference/agent-session-search-contract.md

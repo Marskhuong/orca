@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { reattachDispatchConsumer } from './db/root-dispatch-test-fixture'
 
 const WORKER_PANE_KEY = 'tab_worker:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
@@ -26,7 +27,7 @@ describe('worker start settled by an unobserved prompt', () => {
   afterEach(() => db?.close())
 
   it('lets the worker report correct the record', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const { taskId, dispatchId } = startWorker('run to completion')
 
     db.failWorkerStart(dispatchId, 'dispatch_input', 'agent_prompt_stalled')
@@ -50,7 +51,7 @@ describe('worker start settled by an unobserved prompt', () => {
   })
 
   it('stays settled when the start failed for any other cause', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const { taskId, dispatchId } = startWorker('never became ready')
 
     db.failWorkerStart(dispatchId, 'agent_readiness', 'Agent did not become ready (idle).')
@@ -63,7 +64,7 @@ describe('worker start settled by an unobserved prompt', () => {
   })
 
   it('lets a failure report replace the unobserved-prompt cause with the real one', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const { taskId, dispatchId } = startWorker('reports its own failure')
 
     db.failWorkerStart(dispatchId, 'dispatch_input', 'agent_prompt_stalled')
@@ -86,7 +87,7 @@ describe('worker start settled by an unobserved prompt', () => {
   })
 
   it('rolls back every prompt-stall correction when the worker transition fails', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const { taskId, dispatchId } = startWorker('atomic correction')
     db.failWorkerStart(dispatchId, 'dispatch_input', 'agent_prompt_stalled')
     // The worker correction is the last of the three, so aborting it must undo the other two.
@@ -117,7 +118,7 @@ describe('worker start settled by an unobserved prompt', () => {
   })
 
   it('keeps the identity its authority attached when a stalled start fails', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'stalled after authority' })
     const started = db.createStartingWorkerDispatch({
       creator: { kind: 'system' },

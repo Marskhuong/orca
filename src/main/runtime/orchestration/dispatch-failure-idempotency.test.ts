@@ -1,11 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { describe, expect, it } from 'vitest'
 import type Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 describe('dispatch failure idempotency', () => {
   it('counts an active dispatch failure only once', () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker')
 
@@ -18,7 +18,7 @@ describe('dispatch failure idempotency', () => {
   })
 
   it('does not overwrite a completed dispatch', () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker')
     db.completeDispatch(dispatch.id)
@@ -31,7 +31,7 @@ describe('dispatch failure idempotency', () => {
   })
 
   it('rolls back the dispatch when the task update fails', () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const sqlite = (db as unknown as { db: Database.Database }).db
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker')

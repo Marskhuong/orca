@@ -1,7 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { rmSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { LEGACY_RUN_ID, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { LEGACY_RUN_ID } from './db'
 import { createLegacyStorageCutoverFixture } from './orchestration-legacy-storage-test-fixture'
 
 describe('OrchestrationDb legacy question migration', () => {
@@ -22,7 +24,7 @@ describe('OrchestrationDb legacy question migration', () => {
   } {
     const created = createLegacyStorageCutoverFixture()
     tempDir = created.tempDir
-    db = new OrchestrationDb(created.fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(created.fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     const questionId = readAndAcknowledge ? 'msg_schema19_acknowledged' : 'msg_schema19_unread'
     db.insertMessage({
@@ -84,7 +86,7 @@ describe('OrchestrationDb legacy question migration', () => {
   it('backfills a pre-question-thread ask and its accepted answer', () => {
     const created = createLegacyStorageCutoverFixture()
     tempDir = created.tempDir
-    db = new OrchestrationDb(created.fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(created.fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     db.close()
     db = undefined
@@ -124,7 +126,7 @@ describe('OrchestrationDb legacy question migration', () => {
     raw.pragma('user_version = 19')
     raw.close()
 
-    db = new OrchestrationDb(created.fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(created.fixture.dbPath)
     expect(db.getQuestion('msg_cutover')).toMatchObject({
       run_id: adoptedRunId,
       dispatch_id: created.fixture.legacyDispatchId,
@@ -138,7 +140,7 @@ describe('OrchestrationDb legacy question migration', () => {
   it('leaves a question pending when only cross-run and self-sent decoys exist', () => {
     const created = createLegacyStorageCutoverFixture()
     tempDir = created.tempDir
-    db = new OrchestrationDb(created.fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(created.fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     db.close()
     db = undefined
@@ -173,7 +175,7 @@ describe('OrchestrationDb legacy question migration', () => {
     raw.pragma('user_version = 19')
     raw.close()
 
-    db = new OrchestrationDb(created.fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(created.fixture.dbPath)
     expect(db.getQuestion('msg_pending_cutover')).toMatchObject({
       run_id: adoptedRunId,
       dispatch_id: created.fixture.legacyDispatchId,
@@ -218,7 +220,7 @@ describe('OrchestrationDb legacy question migration', () => {
     `)
     raw.close()
 
-    db = new OrchestrationDb(created.fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(created.fixture.dbPath)
     expect(db.getQuestion('msg_question_task_only')).toMatchObject({
       dispatch_id: 'dispatch_question_target',
       asker_handle: 'term_legacy_worker',
@@ -232,7 +234,7 @@ describe('OrchestrationDb legacy question migration', () => {
   ] as const)('backfills and routes a %s v19 question after takeover', (_label, acknowledged) => {
     const state = prepareTakenOverSchema19Question(acknowledged)
 
-    db = new OrchestrationDb(state.dbPath)
+    db = createCapacityReadyOrchestrationDb(state.dbPath)
     expect(db.getQuestion(state.questionId)).toMatchObject({
       run_id: state.adoptedRunId,
       status: 'pending'

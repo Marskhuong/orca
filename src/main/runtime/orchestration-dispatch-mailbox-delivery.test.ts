@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from './orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -12,7 +13,6 @@ import {
   temporaryDirectories,
   TERMINAL_HANDLE
 } from './orchestration-mailbox-notification-test-harness'
-import { OrchestrationDb } from './orchestration/db'
 import { createRootDispatch } from './orchestration/db/root-dispatch-test-fixture'
 import {
   MAILBOX_POINTER_ENTER_ATTEMPTED,
@@ -39,7 +39,7 @@ describe('Dispatch mailbox Delivery', () => {
     const directory = mkdtempSync(join(tmpdir(), 'orca-dispatch-delivery-'))
     temporaryDirectories.push(directory)
     const dbPath = join(directory, 'orchestration.db')
-    const firstDb = new OrchestrationDb(dbPath)
+    const firstDb = createCapacityReadyOrchestrationDb(dbPath)
     const first = createRuntime(firstDb)
     const run = firstDb.createRun({
       objective: 'Dispatch mailbox',
@@ -84,7 +84,7 @@ describe('Dispatch mailbox Delivery', () => {
     })
     firstDb.close()
 
-    const restartedDb = new OrchestrationDb(dbPath)
+    const restartedDb = createCapacityReadyOrchestrationDb(dbPath)
     const restarted = createRuntime(restartedDb)
     await driveToLiveIdle(restarted.runtime)
     await vi.advanceTimersByTimeAsync(2_500)
@@ -117,7 +117,7 @@ describe('Dispatch mailbox Delivery', () => {
       const directory = mkdtempSync(join(tmpdir(), 'orca-dispatch-ambiguous-pointer-'))
       temporaryDirectories.push(directory)
       const dbPath = join(directory, 'orchestration.db')
-      const firstDb = new OrchestrationDb(dbPath)
+      const firstDb = createCapacityReadyOrchestrationDb(dbPath)
       const run = firstDb.createRun({
         objective: 'Ambiguous Dispatch pointer',
         coordinatorHandle: 'term_dispatch_coordinator',
@@ -148,7 +148,7 @@ describe('Dispatch mailbox Delivery', () => {
       }
       firstDb.close()
 
-      const restartedDb = new OrchestrationDb(dbPath)
+      const restartedDb = createCapacityReadyOrchestrationDb(dbPath)
       const restarted = createRuntime(restartedDb)
       await driveToLiveIdle(restarted.runtime)
       await vi.advanceTimersByTimeAsync(500)
@@ -178,7 +178,7 @@ describe('Dispatch mailbox Delivery', () => {
   )
 
   it('keeps an active worker Delivery stable when the coordinator Run is rebound', () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const run = db.createRun({
       objective: 'Rebound coordinator',
       coordinatorHandle: 'term_old_coordinator',

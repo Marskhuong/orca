@@ -1,8 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from '../../../orchestration/capacity-ready-db.test-support'
 import { vi } from 'vitest'
 import { ORCHESTRATION_METHODS } from '../orchestration'
 import { eraseRpcMethods, type RpcContext } from '../../core'
-import { OrchestrationDb } from '../../../orchestration/db'
+import type { OrchestrationDb } from '../../../orchestration/db'
 import { OrcaRuntimeService } from '../../../orca-runtime'
+import { recordRunCapacity } from '../../../orchestration/run-capacity-state'
+import { capacityEvidence } from '../../../../../shared/orchestration-run-capacity.test-support'
 
 export const COORDINATOR_PANE_KEY = 'tab_coord:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 
@@ -23,7 +26,7 @@ export function createOrchestrationRpcHarness() {
   const coordinatorPaneKey = COORDINATOR_PANE_KEY
 
   function setup(withBoundRun = true): OrchestrationRpcState {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     dbOpen = true
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
@@ -42,6 +45,7 @@ export function createOrchestrationRpcHarness() {
         coordinatorHandle: 'term_coord',
         coordinatorPaneKey
       }).id
+      recordRunCapacity(db, activeRunId, capacityEvidence())
       // Why: default direct fixtures to current-contract state; legacy behavior has dedicated tests.
       const createTask = db.createTask.bind(db)
       db.createTask = (task) => createTask({ ...task, runId: task.runId ?? activeRunId })

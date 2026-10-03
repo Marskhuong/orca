@@ -1,9 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { LEGACY_CONTRACT_VERSION, LEGACY_RUN_ID, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { LEGACY_CONTRACT_VERSION, LEGACY_RUN_ID } from './db'
 import { resolveOrchestrationMigrationStartVersion } from './orchestration-schema-version-skew'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 import { dropDerivedDeliverySchema } from './db/schema/derived-delivery-test-fixture'
@@ -139,7 +141,7 @@ describe('OrchestrationDb version-skew migration', () => {
 
   it('repairs retained v6 rows when the database already claims v17', () => {
     const dbPath = createLegacySchemaClaimingVersion()
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
 
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id
     expect(adoptedRunId).toBeTruthy()
@@ -177,7 +179,7 @@ describe('OrchestrationDb version-skew migration', () => {
 
     db.close()
     db = undefined
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.listTasks({ runId: adoptedRunId }).map((row) => row.id)).toEqual(['task_legacy'])
     expect(db.getRun(run.id)).toBeDefined()
     expect(db.getQuestion(question.message.id)).toMatchObject({ status: 'pending' })
@@ -196,7 +198,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('repairs recovery columns missing from a partially-upgraded v32 schema', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-version-skew-v32-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -208,7 +210,7 @@ describe('OrchestrationDb version-skew migration', () => {
     expect(resolveOrchestrationMigrationStartVersion(raw, 32, 32)).toBe(6)
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.db.pragma('table_info(worker_terminal_resources)')).toEqual(
       expect.arrayContaining([
@@ -237,7 +239,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('starts a genuine pre-v32 database at its own version, not the v6 floor', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-version-skew-v31-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -251,7 +253,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('creates fresh delivery mailboxes with a non-null schema invariant', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
 
     expect(db.db.pragma('table_info(deliveries)')).toEqual(
       expect.arrayContaining([
@@ -263,7 +265,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('repairs a nullable mailbox column written by an incomplete v34 schema', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-version-skew-v34-delivery-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -280,7 +282,7 @@ describe('OrchestrationDb version-skew migration', () => {
     expect(resolveOrchestrationMigrationStartVersion(raw, 34, SCHEMA_VERSION)).toBe(6)
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.db.pragma('table_info(deliveries)')).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'mailbox_handle', notnull: 1 })])
     )
@@ -289,7 +291,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('backfills stable mailbox addresses for v33 Run deliveries', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-version-skew-v33-delivery-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const run = db.createRun({
       objective: 'v33 Delivery',
       coordinatorHandle: 'term_v33',
@@ -323,7 +325,7 @@ describe('OrchestrationDb version-skew migration', () => {
     raw.pragma('user_version = 33')
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.db.pragma('table_info(deliveries)')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'mailbox_handle', type: 'TEXT', notnull: 1 })
@@ -383,7 +385,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('cleans additive lifecycle rows when a v30 writer resets tasks before re-upgrade', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-version-skew-v30-reset-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const task = db.createTask({
       runId: 'run_legacy_local',
       spec: 'reset by an older writer'
@@ -417,13 +419,13 @@ describe('OrchestrationDb version-skew migration', () => {
     raw.pragma('user_version = 30')
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.db.prepare('SELECT * FROM attempt_observation_facts').all()).toEqual([])
   })
   it('repairs a v33 schema missing the pointer-enter column', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-version-skew-v33-pointer-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -437,14 +439,14 @@ describe('OrchestrationDb version-skew migration', () => {
     expect(resolveOrchestrationMigrationStartVersion(raw, 33, SCHEMA_VERSION)).toBe(6)
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(
       (db.db.pragma('table_info(messages)') as { name: string }[]).map(({ name }) => name)
     ).toContain('pointer_enter_pending')
   })
 
   it('indexes pending pointer Enters on the predicate their query uses', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const index = db.db
       .prepare("SELECT sql FROM sqlite_master WHERE name = 'idx_messages_pending_pointer_enter'")
       .get() as { sql: string } | undefined
@@ -454,7 +456,7 @@ describe('OrchestrationDb version-skew migration', () => {
 
   it('keeps a downgraded binary able to write Deliveries against a v34 database', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-downgrade-delivery-'))
-    db = new OrchestrationDb(join(tempDir, 'orchestration.db'))
+    db = createCapacityReadyOrchestrationDb(join(tempDir, 'orchestration.db'))
     const run = db.createRun({
       objective: 'downgrade',
       coordinatorHandle: 'term_coord',
@@ -479,7 +481,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('repairs deliveries a pre-fix build already stamped v34', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-v34-already-stamped-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -500,7 +502,7 @@ describe('OrchestrationDb version-skew migration', () => {
     raw.pragma('user_version = 34')
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.db.pragma('table_info(deliveries)')).toEqual(
       expect.arrayContaining([
@@ -532,7 +534,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('rewrites a pointer-enter index a v34 database built on the = 1 predicate', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-v34-pointer-predicate-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -546,7 +548,7 @@ describe('OrchestrationDb version-skew migration', () => {
     raw.pragma('user_version = 34')
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const sql = (
       db.db
         .prepare("SELECT sql FROM sqlite_master WHERE name = 'idx_messages_pending_pointer_enter'")
@@ -558,7 +560,7 @@ describe('OrchestrationDb version-skew migration', () => {
   it('treats a v35 stamp over the wrong index predicate as skew', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-v35-predicate-skew-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     db.close()
     db = undefined
 
@@ -572,7 +574,7 @@ describe('OrchestrationDb version-skew migration', () => {
     expect(resolveOrchestrationMigrationStartVersion(raw, 35, SCHEMA_VERSION)).toBe(6)
     raw.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(
       (
         db.db

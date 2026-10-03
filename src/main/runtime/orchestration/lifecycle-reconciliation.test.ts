@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { reconcileLifecycleMessage } from './lifecycle-reconciliation'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
@@ -9,7 +10,7 @@ describe('lifecycle reconciliation', () => {
   afterEach(() => db?.close())
 
   it('rejects handle churn when neither side has stable pane identity', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_before_restart')
     const logs: string[] = []
@@ -37,7 +38,7 @@ describe('lifecycle reconciliation', () => {
   const LEAF_B = '22222222-2222-4222-9222-222222222222'
 
   it('completes worker_done from the dispatched pane after a handle remint', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_before_restart', `tab_w:${LEAF_A}`)
     const message = db.insertMessage({
@@ -55,7 +56,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('completes an exact-authority worker_done after an uncertain worker start', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const started = db.createStartingWorkerDispatch({
       creator: { kind: 'system' },
@@ -100,7 +101,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('fails both the dispatch and task from an authenticated failed worker report', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker', `tab_w:${LEAF_A}`)
     const message = db.insertMessage({
@@ -134,7 +135,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('keeps worker report settlement nested in its caller transaction', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker')
     db.db.exec('BEGIN IMMEDIATE')
@@ -155,7 +156,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('replays an identical terminal outcome without mutating settled state', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker')
     const makeMessage = () =>
@@ -190,7 +191,7 @@ describe('lifecycle reconciliation', () => {
       code: 'invalid_outcome'
     }
   ])('rejects malformed worker reports with $code', ({ payload, code }) => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const message = db.insertMessage({
       runId: 'run_legacy_local',
       from: 'term_worker',
@@ -208,7 +209,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('completes worker_done from the same leaf after a pane break-out changed the tab half', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     // Dispatch recorded the post-break-out pane key; the worker shell still
     // holds the spawn-time key with the old tab id.
@@ -228,7 +229,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('rejects mismatched opaque pane keys instead of treating them as legacy', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_owner', `tab_w:${LEAF_A}`)
     const message = db.insertMessage({
@@ -246,7 +247,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('rejects worker_done from a foreign pane that claims the assignee handle', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_owner', `tab_w1:${LEAF_A}`)
     const message = db.insertMessage({
@@ -290,7 +291,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('does not let a caller-supplied rejection marker turn completion into success', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker', `tab_w:${LEAF_A}`)
     const message = db.insertMessage({
@@ -320,7 +321,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('rejects a coordinator completion for a pane-bound dispatch', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker', `tab_w:${LEAF_A}`)
     const message = db.insertMessage({
@@ -340,7 +341,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('uses exact handle equality only for a legacy dispatch without a pane key', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const acceptedTask = db.createTask({
       runId: 'run_legacy_local',
       spec: 'legacy work'
@@ -385,7 +386,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('does not release a dependent when a foreign completion wins the arrival race', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const parent = db.createTask({ runId: 'run_legacy_local', spec: 'parent' })
     const child = db.createTask({
       runId: 'run_legacy_local',
@@ -428,7 +429,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('does not let a foreign replay overwrite an authorized completion', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker', `tab_w:${LEAF_A}`)
     const payload = JSON.stringify({
@@ -465,7 +466,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('surfaces a heartbeat sent from a different pane without recording liveness', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_owner', `tab_w1:${LEAF_A}`)
     const heartbeat = db.insertMessage({
@@ -500,7 +501,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('surfaces a foreign heartbeat that claims the assignee handle', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_owner', `tab_w1:${LEAF_A}`)
     const heartbeat = db.insertMessage({
@@ -521,7 +522,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('records a heartbeat whose pane key drifted only in the tab half', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_owner', `tab_new:${LEAF_A}`)
     const heartbeat = db.insertMessage({
@@ -542,7 +543,7 @@ describe('lifecycle reconciliation', () => {
   })
 
   it('suppresses same-dispatch heartbeats once worker_done is reconciled', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'work' })
     const dispatch = createRootDispatch(db, task.id, 'term_worker')
     const otherTask = db.createTask({

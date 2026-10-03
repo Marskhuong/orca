@@ -70,6 +70,7 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
       const db = runtime.getOrchestrationDb()
       db.createRemoteDispatchAttachment({
         runId: params.runId,
+        capacityEvidence: params.capacityEvidence,
         dispatchId: params.dispatchId,
         taskId: params.taskId,
         homePeerFingerprint: orchestrationMutation.callerFingerprint,

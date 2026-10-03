@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from './orchestration/capacity-ready-db.test-support'
 import { settledWriteStub } from '../providers/settled-pty-write-stub'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -7,7 +8,7 @@ import { ORCHESTRATION_CONTRACT_VERSION } from '../../shared/protocol-version'
 import type { AgentStatusIpcPayload } from '../../shared/agent-status-types'
 import type Database from '../sqlite/sync-database'
 import { OrcaRuntimeService } from './orca-runtime'
-import { OrchestrationDb } from './orchestration/db'
+import type { OrchestrationDb } from './orchestration/db'
 import { RpcDispatcher } from './rpc/dispatcher'
 import { ORCHESTRATION_METHODS } from './rpc/methods/orchestration'
 
@@ -29,7 +30,7 @@ export const temporaryDirectories: string[] = []
 export function createDatabase(prefix: string): OrchestrationDb {
   const directory = mkdtempSync(join(tmpdir(), prefix))
   temporaryDirectories.push(directory)
-  return new OrchestrationDb(join(directory, 'orchestration.db'))
+  return createCapacityReadyOrchestrationDb(join(directory, 'orchestration.db'))
 }
 
 export function sqliteFor(db: OrchestrationDb): Database.Database {

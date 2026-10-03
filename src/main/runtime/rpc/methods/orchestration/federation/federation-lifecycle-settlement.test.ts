@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ORCHESTRATION_CONTRACT_VERSION,
@@ -6,7 +7,7 @@ import {
 } from '../../../../../../shared/protocol-version'
 import type { RuntimeRpcResponse } from '../../../../../../shared/runtime-rpc-envelope'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrchestrationEnvironmentTransport } from '../../../../orchestration/environment-transport'
 import { waitForFederatedLifecycleSettlement } from '../../../../orchestration/federation-lifecycle-settlement'
 import { RpcDispatcher } from '../../../dispatcher'
@@ -26,8 +27,8 @@ describe('orchestration federation lifecycle settlement', () => {
   let transport: OrchestrationEnvironmentTransport
 
   beforeEach(() => {
-    homeDb = new OrchestrationDb(':memory:')
-    workerDb = new OrchestrationDb(':memory:')
+    homeDb = createCapacityReadyOrchestrationDb(':memory:')
+    workerDb = createCapacityReadyOrchestrationDb(':memory:')
     workerRuntime = new OrcaRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)
     workerDispatcher = new RpcDispatcher({ runtime: workerRuntime, methods: ORCHESTRATION_METHODS })

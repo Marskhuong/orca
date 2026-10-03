@@ -33,6 +33,8 @@ import {
   isKnownRemoteStartFailure
 } from './federated-worker-start-receipts'
 import { parseTaskDeps } from '../worker/task-deps-argument'
+import { requireRunCapacity } from '../../../../orchestration/run-capacity-state'
+import { RUN_CAPACITY_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-run-capacity'
 
 export async function startFederatedWorker(args: {
   params: WorkerStartInput
@@ -50,6 +52,7 @@ export async function startFederatedWorker(args: {
   callerSession?: OrchestrationSessionCaller
 }): Promise<unknown> {
   const { params, runtime, db, task, runId, orchestrationMutation } = args
+  const capacityEvidence = requireRunCapacity(db, runId)
   if (!isWorkerStartTimeoutWithinTimerLimit(params.timeoutMs)) {
     throw new OrchestrationError(
       'invalid_argument',
@@ -110,6 +113,13 @@ export async function startFederatedWorker(args: {
   const supportsControlMail = status.capabilities?.includes(
     ORCHESTRATION_FEDERATION_CONTROL_MAIL_RUNTIME_CAPABILITY
   )
+  if (!status.capabilities?.includes(RUN_CAPACITY_RUNTIME_CAPABILITY)) {
+    throw new OrchestrationError(
+      'capability_unsupported',
+      `Connected server ${server.name} must support ${RUN_CAPACITY_RUNTIME_CAPABILITY} before worker start.`,
+      { effectsApplied: false }
+    )
+  }
   const federationProtocolVersion =
     supportsControlMail &&
     status.capabilities?.includes(ORCHESTRATION_FEDERATION_LIFECYCLE_SETTLEMENT_RUNTIME_CAPABILITY)
@@ -166,6 +176,7 @@ export async function startFederatedWorker(args: {
         'orchestration.federationAttachStart',
         {
           runId,
+          capacityEvidence,
           dispatchId: started.dispatch.id,
           taskId: taskForRemote.id,
           taskSpec: taskForRemote.spec,

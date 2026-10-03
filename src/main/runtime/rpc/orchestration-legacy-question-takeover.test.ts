@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { createHash } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchestration-compatibility-evidence'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from '../orchestration/db'
+import type { OrchestrationDb } from '../orchestration/db'
 import { OrcaRuntimeService } from '../orca-runtime'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
@@ -38,7 +39,7 @@ function createHarness(options?: { seedCutoverQuestion?: boolean; seedCutoverAns
   const dir = mkdtempSync(join(tmpdir(), 'orca-legacy-question-takeover-'))
   tempDirs.push(dir)
   const dbPath = join(dir, 'orchestration.db')
-  const before = new OrchestrationDb(dbPath)
+  const before = createCapacityReadyOrchestrationDb(dbPath)
   const task = before.createTask({
     runId: 'run_legacy_local',
     spec: 'legacy assignment',
@@ -84,7 +85,7 @@ function createHarness(options?: { seedCutoverQuestion?: boolean; seedCutoverAns
   raw.pragma('user_version = 18')
   raw.close()
 
-  const db = new OrchestrationDb(dbPath)
+  const db = createCapacityReadyOrchestrationDb(dbPath)
   databases.push(db)
   const runtime = new OrcaRuntimeService()
   runtime.setOrchestrationDb(db)

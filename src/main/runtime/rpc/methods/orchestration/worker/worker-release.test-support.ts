@@ -4,6 +4,8 @@ import { eraseRpcMethods, type RpcContext } from '../../../core'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
 import type { TuiAgent } from '../../../../../../shared/tui-agent'
+import { recordRunCapacity } from '../../../../orchestration/run-capacity-state'
+import { capacityEvidence } from '../../../../../../shared/orchestration-run-capacity.test-support'
 
 type WorkerStartOptions = { terminal?: string; agent?: TuiAgent }
 
@@ -133,6 +135,7 @@ export function createOrchestrationWorkerReleaseHarness(): OrchestrationWorkerRe
       coordinatorPaneKey
     }).id
     ctx = { runtime }
+    recordRunCapacity(db, activeRunId, capacityEvidence())
   }
 
   function cleanup(): void {

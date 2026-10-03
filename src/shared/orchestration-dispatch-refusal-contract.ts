@@ -5,9 +5,29 @@ import { TUI_AGENT_CONFIG } from './tui-agent-config'
 // existing string is a published receipt an old consumer may match on.
 
 export type DispatchRefusalReceipt = {
-  code: 'task_not_found' | 'task_not_startable' | 'inject_rejected'
+  code:
+    | 'task_not_found'
+    | 'task_not_startable'
+    | 'inject_rejected'
+    | 'RUN_CAPACITY_HANDSHAKE_REQUIRED'
   message: string
   data: Record<string, unknown> & { nextSteps: string[] }
+}
+
+export function runCapacityHandshakeRequiredRefusal(runId: string): DispatchRefusalReceipt {
+  return {
+    code: 'RUN_CAPACITY_HANDSHAKE_REQUIRED',
+    message: `Run ${runId} requires a recorded capacity handshake before substantive dispatch.`,
+    data: {
+      runId,
+      effectsApplied: false,
+      workerCreated: false,
+      nextSteps: [
+        'Read Orca Meter capacity evidence, complete the Run capacity handshake, and record RUN_CAPACITY_SNAPSHOT_ID and RUN_ROUTING_POSTURE with orca orchestration run-capacity-record --id <run_id> --evidence <json> --json.',
+        'Retry the substantive dispatch after registration succeeds. UNKNOWN capacity evidence satisfies the gate.'
+      ]
+    }
+  }
 }
 
 export function taskNotFoundRefusal(

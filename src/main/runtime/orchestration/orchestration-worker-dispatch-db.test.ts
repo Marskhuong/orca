@@ -1,5 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { CURRENT_CONTRACT_VERSION, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { CURRENT_CONTRACT_VERSION } from './db'
 
 describe('OrchestrationDb worker Dispatch state', () => {
   let db: OrchestrationDb | undefined
@@ -9,7 +11,7 @@ describe('OrchestrationDb worker Dispatch state', () => {
   })
 
   function createDb(): OrchestrationDb {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     return db
   }
 

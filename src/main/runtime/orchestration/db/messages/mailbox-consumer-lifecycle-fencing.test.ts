@@ -1,9 +1,13 @@
+import {
+  createCapacityReadyOrchestrationDb,
+  markRunFixtureAsRemote
+} from '../../capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../shared/protocol-version'
-import { OrchestrationDb } from '../orchestration-db'
+import type { OrchestrationDb } from '../orchestration-db'
 import { createRootDispatch } from '../root-dispatch-test-fixture'
 
 type Settlement = 'local completion' | 'local failure' | 'remote stop' | 'remote failure'
@@ -23,7 +27,7 @@ describe('mailbox consumer lifecycle fencing', () => {
   })
 
   function open(path: string): OrchestrationDb {
-    const db = new OrchestrationDb(path)
+    const db = createCapacityReadyOrchestrationDb(path)
     connections.push(db)
     return db
   }
@@ -60,6 +64,7 @@ describe('mailbox consumer lifecycle fencing', () => {
     let consumerGeneration = 0
 
     if (remote) {
+      markRunFixtureAsRemote(db, run.id)
       db.createRemoteDispatchAttachment({
         runId: run.id,
         dispatchId,
@@ -179,6 +184,7 @@ describe('mailbox consumer lifecycle fencing', () => {
         coordinatorPaneKey: 'tab:11111111-1111-4111-8111-111111111111'
       })
       const dispatchId = `ctx_${state}`
+      markRunFixtureAsRemote(db, run.id)
       db.createRemoteDispatchAttachment({
         runId: run.id,
         dispatchId,

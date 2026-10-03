@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ORCHESTRATION_CONTRACT_VERSION,
   ORCHESTRATION_FEDERATION_CONTROL_MAIL_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrchestrationEnvironmentTransport } from '../../../../orchestration/environment-transport'
 import { RpcDispatcher } from '../../../dispatcher'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
@@ -26,8 +27,8 @@ describe('orchestration federation', () => {
   let loseNextAckResponse: boolean
 
   beforeEach(() => {
-    homeDb = new OrchestrationDb(':memory:')
-    workerDb = new OrchestrationDb(':memory:')
+    homeDb = createCapacityReadyOrchestrationDb(':memory:')
+    workerDb = createCapacityReadyOrchestrationDb(':memory:')
     databases.push(homeDb, workerDb)
     workerRuntime = new OrcaRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)

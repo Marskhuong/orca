@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 type WorkerFixture = {
@@ -678,7 +679,7 @@ describe('Task/Dispatch lifecycle guards', () => {
 
 function createDatabase(): OrchestrationDb {
   dir = mkdtempSync(join(tmpdir(), 'orca-task-dispatch-lifecycle-'))
-  db = new OrchestrationDb(join(dir, 'orchestration.db'))
+  db = createCapacityReadyOrchestrationDb(join(dir, 'orchestration.db'))
   return db
 }
 

@@ -1,5 +1,6 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 let db: OrchestrationDb | undefined
@@ -11,7 +12,7 @@ afterEach(() => {
 
 // Why: seeding before the row settles keeps the expectation off the row's initial null — a settle that cleared the column would satisfy `toBeNull()` too.
 function seedHeartbeatedDispatch(): { d: OrchestrationDb; dispatchId: string } {
-  const d = new OrchestrationDb(':memory:')
+  const d = createCapacityReadyOrchestrationDb(':memory:')
   db = d
   const task = d.createTask({ runId: 'run_legacy_local', spec: 'work' })
   const dispatch = createRootDispatch(d, task.id, 'term_worker')

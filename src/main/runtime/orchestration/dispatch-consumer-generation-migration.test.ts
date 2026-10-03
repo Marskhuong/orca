@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
 import { dropDerivedDeliverySchema } from './db/schema/derived-delivery-test-fixture'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { SCHEMA_VERSION } from './db/contract-constants'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 import { resolveOrchestrationMigrationStartVersion } from './orchestration-schema-version-skew'
@@ -27,7 +28,7 @@ describe('OrchestrationDb v35 to v36 migration', () => {
   function createV35Database(): { path: string; dispatchId: string; deliveryId: string } {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-db-v36-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    const seed = new OrchestrationDb(dbPath)
+    const seed = createCapacityReadyOrchestrationDb(dbPath)
     const run = seed.createRun({
       objective: 'pre-v36 run',
       coordinatorHandle: 'term_coord',
@@ -61,7 +62,7 @@ describe('OrchestrationDb v35 to v36 migration', () => {
 
   it('adds the column at 0 without discarding a v35 outstanding Delivery', () => {
     const v35 = createV35Database()
-    db = new OrchestrationDb(v35.path)
+    db = createCapacityReadyOrchestrationDb(v35.path)
 
     expect(db.db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     const dispatch = db.getDispatchContextById(v35.dispatchId)!

@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
-import { OrchestrationDb } from '../orchestration/db'
+import type { OrchestrationDb } from '../orchestration/db'
 import { OrcaRuntimeService } from '../orca-runtime'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import type { RpcRequest } from './core'
@@ -249,7 +250,7 @@ describe('orchestration commit-notify recovery', () => {
     const dir = mkdtempSync(join(tmpdir(), 'orca-worker-done-restart-'))
     paths.push(dir)
     const dbPath = join(dir, 'orchestration.db')
-    const db = new OrchestrationDb(dbPath)
+    const db = createCapacityReadyOrchestrationDb(dbPath)
     const run = db.createRun({
       objective: 'Resume worker_done',
       coordinatorHandle: 'term_coord',
@@ -304,7 +305,7 @@ describe('orchestration commit-notify recovery', () => {
     expect(db.getTask(task.id)?.status).toBe('dispatched')
     db.close()
 
-    const restartedDb = new OrchestrationDb(dbPath)
+    const restartedDb = createCapacityReadyOrchestrationDb(dbPath)
     const restartedRuntime = new OrcaRuntimeService()
     restartedRuntime.setOrchestrationDb(restartedDb)
     vi.spyOn(restartedRuntime, 'getTerminalPaneKey').mockImplementation((handle) =>

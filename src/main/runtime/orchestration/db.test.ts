@@ -1,9 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { LEGACY_RUN_ID, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { LEGACY_RUN_ID } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 const runId = 'run_legacy_local'
@@ -30,7 +32,7 @@ describe('OrchestrationDb', () => {
   })
 
   function createDb(): OrchestrationDb {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     return db
   }
 
@@ -696,7 +698,7 @@ describe('OrchestrationDb', () => {
 
     it('migrates a v1 snapshot to v2, accepts heartbeat, preserves indexes', () => {
       const path = createV1Snapshot()
-      const d = new OrchestrationDb(path)
+      const d = createCapacityReadyOrchestrationDb(path)
       db = d
 
       // (a) INSERT type='heartbeat' now succeeds
@@ -740,7 +742,7 @@ describe('OrchestrationDb', () => {
 
     it('adds pane-identity columns (v6) and persists them', () => {
       const path = createV1Snapshot()
-      const d = new OrchestrationDb(path)
+      const d = createCapacityReadyOrchestrationDb(path)
       db = d
 
       const task = d.createTask({ runId, spec: 'work' })
@@ -760,7 +762,7 @@ describe('OrchestrationDb', () => {
 
     it('is idempotent: opening an already-migrated DB is a no-op', () => {
       const path = createV1Snapshot()
-      const first = new OrchestrationDb(path)
+      const first = createCapacityReadyOrchestrationDb(path)
       first.insertMessage({
         runId,
         from: 'w',
@@ -771,7 +773,7 @@ describe('OrchestrationDb', () => {
       })
       first.close()
 
-      const second = new OrchestrationDb(path)
+      const second = createCapacityReadyOrchestrationDb(path)
       db = second
       expect(() =>
         second.insertMessage({

@@ -1,7 +1,8 @@
+import { createCapacityReadyOrchestrationDb } from '../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { ORCHESTRATION_METHODS } from './orchestration'
 import { eraseRpcMethods, type RpcContext } from '../core'
-import { OrchestrationDb } from '../../orchestration/db'
+import type { OrchestrationDb } from '../../orchestration/db'
 import { OrcaRuntimeService } from '../../orca-runtime'
 import { completeWorkerTerminalRelease } from './orchestration/worker/worker-release-completion'
 
@@ -20,7 +21,7 @@ describe('orchestration worker release incarnation fallback', () => {
 
   /** Fresh in-memory db and a fully-stubbed runtime for one worker-release scenario. */
   function setup(): void {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     dbOpen = true
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)

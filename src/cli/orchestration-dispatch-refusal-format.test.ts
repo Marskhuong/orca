@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   injectRejectedRefusal,
+  runCapacityHandshakeRequiredRefusal,
   taskNotFoundRefusal,
   taskNotStartableRefusal,
   type DispatchRefusalReceipt
@@ -17,6 +18,10 @@ afterEach(() => {
 // which is what lets a client that predates a new code still print its message and nextSteps.
 describe('orchestration dispatch refusals through the CLI error boundary', () => {
   it.each([
+    {
+      receipt: runCapacityHandshakeRequiredRefusal('run_without_capacity'),
+      recovery: /run-capacity-record/
+    },
     {
       receipt: taskNotFoundRefusal('Task not found: task_missing', { taskId: 'task_missing' }),
       recovery: /task-create|task-list/

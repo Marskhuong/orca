@@ -1,9 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
 import { SCHEMA_VERSION } from './db/contract-constants'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
@@ -41,7 +42,7 @@ describe('OrchestrationDb bounded mutation receipts', () => {
   afterEach(() => db?.close())
 
   it('prunes expired completed receipts but preserves unresolved receipts', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const sqlite = sqliteFor(db)
     sqlite.exec(`
       INSERT INTO mutation_receipts (
@@ -63,7 +64,7 @@ describe('OrchestrationDb bounded mutation receipts', () => {
   })
 
   it('caps completed receipt count while retaining the newest replay records', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     insertMutationReceipts(db, MUTATION_RECEIPT_MAX_ROWS, 'completed')
 
     db.beginMutationReceipt({
@@ -83,7 +84,7 @@ describe('OrchestrationDb bounded mutation receipts', () => {
   })
 
   it('fails closed when unresolved receipts alone fill the ledger', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     insertMutationReceipts(db, MUTATION_RECEIPT_MAX_ROWS, 'pending')
 
     expect(() =>
@@ -99,7 +100,7 @@ describe('OrchestrationDb bounded mutation receipts', () => {
   })
 
   it('prunes completed receipts before accepting a remote attachment', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     insertMutationReceipts(db, MUTATION_RECEIPT_MAX_ROWS, 'completed')
 
     db.createRemoteDispatchAttachment({
@@ -127,7 +128,7 @@ describe('OrchestrationDb bounded mutation receipts', () => {
   })
 
   it('rejects a remote attachment when pending receipts fill the ledger', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     insertMutationReceipts(db, MUTATION_RECEIPT_MAX_ROWS, 'pending')
 
     expect(() =>
@@ -152,7 +153,7 @@ describe('OrchestrationDb bounded mutation receipts', () => {
   })
 
   it('guards atomic worker acceptance without changing task state', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'capacity check' })
     insertMutationReceipts(db, MUTATION_RECEIPT_MAX_ROWS, 'pending')
 
@@ -181,7 +182,7 @@ describe('OrchestrationDb Run pagination', () => {
   afterEach(() => db?.close())
 
   it('returns stable bounded pages without skipping Runs sharing a timestamp', () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const createdIds = Array.from({ length: 5 }, (_, index) => `run_page_${index}`)
     const insertRun = sqliteFor(db).prepare(
       `INSERT INTO runs (
@@ -227,7 +228,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
   it('migrates a populated upstream v23 database idempotently', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-dispatch-index-migration-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const task = db.createTask({
       runId: 'run_legacy_local',
       spec: 'indexed lookup'
@@ -247,7 +248,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
     oldDb.pragma('user_version = 23')
     oldDb.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const sqlite = sqliteFor(db)
     expect(sqlite.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getDispatchContextById(dispatch.id)).toMatchObject({
@@ -287,7 +288,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
     ).toBeDefined()
 
     db.close()
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(sqliteFor(db).pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getDispatchContextById(dispatch.id)).toBeDefined()
   })
@@ -295,7 +296,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
   it('adds the active-handle index to a populated v24 database idempotently', () => {
     tempDir = mkdtempSync(join(tmpdir(), 'orca-active-dispatch-index-migration-'))
     const dbPath = join(tempDir, 'orchestration.db')
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const run = db.createRun({
       objective: 'retained v24 authority',
       coordinatorHandle: 'term_coord',
@@ -318,7 +319,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
     oldDb.pragma('user_version = 24')
     oldDb.close()
 
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     const sqlite = sqliteFor(db)
     expect(sqlite.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getTask(task.id)).toMatchObject({
@@ -338,7 +339,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
     })
 
     db.close()
-    db = new OrchestrationDb(dbPath)
+    db = createCapacityReadyOrchestrationDb(dbPath)
     expect(sqliteFor(db).pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION)
     expect(db.getTask(task.id)?.created_by_process_incarnation).toBe('pty_creator:incarnation-a')
   })

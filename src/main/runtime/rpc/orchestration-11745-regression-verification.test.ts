@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 // Why: independent adversarial verification of every #11745 fix. Each case reproduces the ORIGINAL
 // defect and asserts it is closed by observing state, not just the response envelope — a refusal
 // that still mutated the graph is a failure, and so is a fix that fences a legitimate coordinator.
@@ -7,7 +8,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchestration-compatibility-evidence'
 import SyncDatabase from '../../sqlite/sync-database'
-import { OrchestrationDb } from '../orchestration/db'
+import type { OrchestrationDb } from '../orchestration/db'
 import {
   cleanupLegacyCompatibilityDispatcherHarnesses,
   COORDINATOR_HANDLE,
@@ -185,7 +186,7 @@ describe('#11745 H1 — gate methods authorize the caller Run', () => {
     // Why: G4 must hold on a plain runtime, so the fix cannot be an artifact of adoption state.
     const dir = mkdtempSync(join(tmpdir(), 'orca-11745-g4-'))
     tempDirs.push(dir)
-    const db = new OrchestrationDb(join(dir, 'orchestration.db'))
+    const db = createCapacityReadyOrchestrationDb(join(dir, 'orchestration.db'))
     databases.push(db)
     expect(db.getLegacyAdoption()).toBeUndefined()
 
@@ -641,7 +642,7 @@ function createAdoptedDb(options: { settleWork: boolean }): {
   tempDirs.push(dir)
   const dbPath = join(dir, 'orchestration.db')
 
-  const before = new OrchestrationDb(dbPath)
+  const before = createCapacityReadyOrchestrationDb(dbPath)
   const task = before.createTask({
     runId: 'run_legacy_local',
     spec: 'legacy assignment',
@@ -676,7 +677,7 @@ function createAdoptedDb(options: { settleWork: boolean }): {
   raw.pragma('user_version = 18')
   raw.close()
 
-  const db = new OrchestrationDb(dbPath)
+  const db = createCapacityReadyOrchestrationDb(dbPath)
   databases.push(db)
   return {
     db,
@@ -732,7 +733,7 @@ describe('#11745 L6 — indexed getCurrentRunForPane keeps pane equivalence', ()
   function paneDb(): OrchestrationDb {
     const dir = mkdtempSync(join(tmpdir(), 'orca-11745-l6-'))
     tempDirs.push(dir)
-    const db = new OrchestrationDb(join(dir, 'orchestration.db'))
+    const db = createCapacityReadyOrchestrationDb(join(dir, 'orchestration.db'))
     databases.push(db)
     return db
   }

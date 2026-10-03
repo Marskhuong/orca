@@ -93,12 +93,12 @@ precedence over the idle rule. Do not reuse the settled lifecycle IDs.
 
 ## Canonical supervised loop
 
-Confirm the runtime, bind one Run, and start the full independent wave before
-waiting. `worker-start --spec` creates the Task and its attempt in one call:
+Confirm the runtime, bind one Run, register the Meter capacity handshake (see `references/coordinator-loop.md`), then start the full independent wave. `worker-start --spec` creates the Task and its attempt in one call:
 
 ```text
 ORCA status --json
 ORCA orchestration run-create --objective "<objective>" --json
+ORCA orchestration run-capacity-record --id "<run id>" --evidence "<completed handshake evidence JSON>" --json
 ORCA orchestration worker-start --spec "<worker A task>" --worktree current --agent codex --json
 ORCA orchestration worker-start --spec "<worker B task>" --worktree current --agent claude --json
 ORCA orchestration check --wait --types "worker_done,escalation,question" --timeout-ms 900000 --json

@@ -1,6 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
 import { eraseRpcMethods } from '../../../core'
@@ -11,7 +12,7 @@ describe('manual Dispatch observation', () => {
   afterEach(() => db?.close())
 
   it('covers the real dispatch --inject entry path before observing the lane', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     const coordinatorPaneKey = 'tab_coord:leaf_coord'
@@ -94,7 +95,7 @@ describe('manual Dispatch observation', () => {
   })
 
   it('keeps context-only reads truthful without supervising the operator pane', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'showTerminal').mockResolvedValue({
@@ -219,7 +220,7 @@ describe('manual Dispatch observation', () => {
   })
 
   it('lists an unsupervised context-only dispatch even when process identity is absent', async () => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
@@ -261,7 +262,7 @@ describe('manual Dispatch observation', () => {
     ['orchestration.workerStop', 'stopped'],
     ['orchestration.workerAbandon', 'abandoned']
   ] as const)('%s fences the assignment without closing the operator pane', async (name, state) => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     const closeTerminal = vi.spyOn(runtime, 'closeTerminal')

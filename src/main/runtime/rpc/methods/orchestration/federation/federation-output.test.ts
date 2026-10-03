@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -10,7 +11,7 @@ import {
   ORCHESTRATION_FEDERATION_STRUCTURED_READ_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrchestrationEnvironmentTransport } from '../../../../orchestration/environment-transport'
 import type { RpcRequest } from '../../../core'
 import { RpcDispatcher } from '../../../dispatcher'
@@ -36,10 +37,10 @@ describe('orchestration federated worker output', () => {
   let remoteCalls: string[]
 
   beforeEach(() => {
-    homeDb = new OrchestrationDb(':memory:')
+    homeDb = createCapacityReadyOrchestrationDb(':memory:')
     workerDbDirectory = mkdtempSync(join(tmpdir(), 'orca-federated-output-db-'))
     workerDbPath = join(workerDbDirectory, 'worker.db')
-    workerDb = new OrchestrationDb(workerDbPath)
+    workerDb = createCapacityReadyOrchestrationDb(workerDbPath)
     databases.push(homeDb, workerDb)
     workerRuntime = new OrcaRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)
@@ -256,7 +257,7 @@ describe('orchestration federated worker output', () => {
     if (reopenDb) {
       workerDb.close()
       databases.splice(databases.indexOf(workerDb), 1)
-      workerDb = new OrchestrationDb(workerDbPath)
+      workerDb = createCapacityReadyOrchestrationDb(workerDbPath)
       databases.push(workerDb)
     }
     workerRuntime = new OrcaRuntimeService()

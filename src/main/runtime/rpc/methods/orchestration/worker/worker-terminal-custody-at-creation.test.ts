@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 /**
  * Custody for an agent terminal this start created is written when the terminal is created, not
  * after the agent boot wait.
@@ -9,7 +10,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { createOrchestrationWorkerReleaseHarness } from './worker-release.test-support'
 
 const READY_WAIT = {
@@ -192,7 +193,7 @@ describe('custody refuses a dispatch that stopped while its terminal was being c
   afterEach(() => db?.close())
 
   it('records no owner once the dispatch is no longer starting', () => {
-    const d = (db = new OrchestrationDb(':memory:'))
+    const d = (db = createCapacityReadyOrchestrationDb(':memory:'))
     const started = d.createStartingWorkerDispatch({
       creator: { kind: 'system' },
       maxDepth: Number.MAX_SAFE_INTEGER,

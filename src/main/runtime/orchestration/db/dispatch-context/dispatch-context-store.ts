@@ -10,6 +10,7 @@ import type { OrchestrationDb } from '../orchestration-db'
 import { transitionLifecycleWithDb } from '../lifecycle-transition'
 import { taskNotFoundError, taskNotStartableError } from '../../task-dispatch-refusal'
 import { dispatchAssigneeOrcaSessionId } from '../../dispatch-assignee-orca-session-id'
+import { requireRunCapacity } from '../../run-capacity-state'
 
 export function createDispatchContext(
   this: OrchestrationDb,
@@ -40,6 +41,8 @@ export function createDispatchContext(
   }
 
   // Why: lock on pane identity too, so a reminted handle can't open a second concurrent dispatch on the same pane.
+  requireRunCapacity(this, task.run_id)
+
   const existing = this.findActiveDispatchForAssignee(assigneeHandle, assigneePaneKey)
 
   if (existing) {

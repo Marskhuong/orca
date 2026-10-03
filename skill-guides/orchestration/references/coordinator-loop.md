@@ -4,6 +4,18 @@ Load this reference for expanded DAG waves, per-invocation launch preferences,
 same-terminal reuse, or review ownership. The compact guide remains the source
 of truth for the loop order and completion boundary.
 
+## Run capacity handshake
+
+Before the first substantive dispatch, read Orca Meter capacity evidence and complete
+the Run capacity handshake. Register its `RUN_CAPACITY_SNAPSHOT_ID` and
+`RUN_ROUTING_POSTURE` with `run-capacity-record`; `run-capacity-show --id <run id>`
+reads the runtime's durable record. A bridge-local handshake alone is insufficient.
+If capacity observation is unknown, a completed handshake with snapshot `UNKNOWN`
+and a consistent posture satisfies the gate. Do not infer `UNAVAILABLE` or
+`PRESERVED`. The runtime validates registration and leaves model and route selection
+to the coordinator. Existing workers continue; the next substantive dispatch needs
+the record. `RUN_CAPACITY_HANDSHAKE_REQUIRED` refuses before worker resources exist.
+
 ## Ready waves
 
 Create independent Tasks before the first wait. Encode only real dependencies,

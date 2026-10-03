@@ -1,8 +1,10 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { LEGACY_RUN_ID, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { LEGACY_RUN_ID } from './db'
 import { createRootDispatch } from './db/root-dispatch-test-fixture'
 
 describe('OrchestrationDb Run state', () => {
@@ -13,7 +15,7 @@ describe('OrchestrationDb Run state', () => {
   })
 
   function createDb(): OrchestrationDb {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     return db
   }
 
@@ -192,7 +194,7 @@ describe('OrchestrationDb Run state', () => {
       const dir = mkdtempSync(join(tmpdir(), 'orca-delivery-'))
       const dbPath = join(dir, 'orchestration.db')
       try {
-        const firstDb = new OrchestrationDb(dbPath)
+        const firstDb = createCapacityReadyOrchestrationDb(dbPath)
         const run = createBoundRun(firstDb)
         firstDb.insertMessage({
           from: 'a',
@@ -206,7 +208,7 @@ describe('OrchestrationDb Run state', () => {
         })!
         firstDb.close()
 
-        const reopened = new OrchestrationDb(dbPath)
+        const reopened = createCapacityReadyOrchestrationDb(dbPath)
         db = reopened
         const replay = reopened.getOrCreateRunDelivery({
           runId: run.id,

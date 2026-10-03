@@ -1,7 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from './capacity-ready-db.test-support'
 import { rmSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import Database from '../../sqlite/sync-database'
-import { LEGACY_RUN_ID, OrchestrationDb } from './db'
+import type { OrchestrationDb } from './db'
+import { LEGACY_RUN_ID } from './db'
 import {
   createLegacyStorageCutoverFixture,
   type LegacyStorageCutoverFixture
@@ -32,7 +34,7 @@ describe('OrchestrationDb legacy coordinator authority', () => {
     workerPrincipalId: string
   } {
     const fixture = createCutoverFixture()
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     const worker = db.commitLegacyCompatibilityPrincipal({
       runId: adoptedRunId,
@@ -84,7 +86,7 @@ describe('OrchestrationDb legacy coordinator authority', () => {
     `)
     raw.close()
 
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     expect(db.getActiveCoordinatorRun()).toBeUndefined()
     const adoption = db.getLegacyAdoption()!
@@ -109,7 +111,7 @@ describe('OrchestrationDb legacy coordinator authority', () => {
     expect(db.isLegacyCoordinatorHandle(adoptedRunId, 'term_natural_coord')).toBe(false)
 
     db.close()
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     expect(db.getLegacyAdoption()).toEqual(adoption)
     expect(db.getCoordinatorRun('coordinator_manual')).toEqual(migratedCoordinator)
     expect(
@@ -133,7 +135,7 @@ describe('OrchestrationDb legacy coordinator authority', () => {
     `)
     raw.close()
 
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoption = db.getLegacyAdoption()!
     const adoptedRunId = adoption.adopted_run_id
     expect(db.getActiveCoordinatorRun()).toBeUndefined()
@@ -181,7 +183,7 @@ describe('OrchestrationDb legacy coordinator authority', () => {
     `)
     raw.close()
 
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     expect(db.isLegacyCoordinatorHandle(adoptedRunId, 'term_second_worker')).toBe(false)
     expect(db.isLegacyCoordinatorHandle(adoptedRunId, 'term_legacy_worker')).toBe(false)
@@ -190,7 +192,7 @@ describe('OrchestrationDb legacy coordinator authority', () => {
 
   it('promotes only the unacknowledged coordinator recovery cohort during takeover', () => {
     const fixture = createCutoverFixture()
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     const unacknowledged = db.insertMessage({
       runId: adoptedRunId,
@@ -238,7 +240,7 @@ describe('OrchestrationDb legacy coordinator authority', () => {
 
   it('promotes a pre-cutover read recovery message when takeover precedes attestation', () => {
     const fixture = createCutoverFixture()
-    db = new OrchestrationDb(fixture.dbPath)
+    db = createCapacityReadyOrchestrationDb(fixture.dbPath)
     const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
     const recoveryMessageId = fixture.legacyMessageIds[1]
     expect(db.getLegacyCoordinatorPrincipal(adoptedRunId)).toBeUndefined()

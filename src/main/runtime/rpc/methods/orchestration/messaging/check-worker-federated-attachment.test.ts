@@ -1,10 +1,14 @@
+import {
+  createCapacityReadyOrchestrationDb,
+  markRunFixtureAsRemote
+} from '../../../../orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { eraseRpcMethods, type RpcContext } from '../../../core'
-import { OrchestrationDb } from '../../../../orchestration/db'
+import type { OrchestrationDb } from '../../../../orchestration/db'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
 import {
   encodeFederatedControlMessage,
@@ -39,7 +43,7 @@ describe('orchestration.check on a federated attachment across a restart', () =>
   })
 
   function launch(path: string): RpcContext {
-    db = new OrchestrationDb(path)
+    db = createCapacityReadyOrchestrationDb(path)
     const runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
@@ -68,10 +72,14 @@ describe('orchestration.check on a federated attachment across a restart', () =>
   }
 
   function attach(store: OrchestrationDb, dispatchId: string, runId: string): void {
+    const homeDispatch = store.getDispatchContextById(dispatchId)
+    if (!homeDispatch) {
+      markRunFixtureAsRemote(store, runId)
+    }
     store.createRemoteDispatchAttachment({
       dispatchId,
       runId,
-      taskId: 'task_federated_1',
+      taskId: homeDispatch?.task_id ?? 'task_federated_1',
       homePeerFingerprint: 'peer_fp',
       protocolVersion: 1,
       runtimeEpoch: 'epoch_1',
