@@ -1,7 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { describe, expect, it, vi } from 'vitest'
 import {
   OrcaRuntimeService,
-  OrchestrationDb,
   createRootDispatch,
   makePaneKey
 } from '../orca-runtime-test-mocks.spec'
@@ -17,7 +17,7 @@ describe('OrcaRuntimeService', () => {
       paneRuntimeId: index + 1
     }))
     const handles = terminals.map((terminal) => runtime.preAllocateHandleForPty(terminal.ptyId))
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const run = db.createRun({
         objective: 'bounded attention query oracle',

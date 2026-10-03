@@ -1,10 +1,11 @@
+import { createCapacityReadyOrchestrationDb } from './orchestration/capacity-ready-db.test-support'
 // A structured worker whose agent is at rest: its dispatch keeps it running while open, and once it
 // rests it is still this runtime's worker — mail reaches it — until its chat tab is gone. Whether
 // its process runs is a separate answer, and a close counts a released lease as done.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
-import { OrchestrationDb } from './orchestration/db'
+import type { OrchestrationDb } from './orchestration/db'
 
 const hostRef: { current: unknown } = { current: null }
 
@@ -86,7 +87,7 @@ beforeEach(() => {
 describe('an open dispatch keeps its worker running (P2-19 i)', () => {
   let db: OrchestrationDb
   beforeEach(() => {
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
   })
   afterEach(() => db.close())
 
@@ -279,7 +280,7 @@ describe('a close whose stop could not be proven (P2-30)', () => {
 
 describe('a task dispatched into a worker whose own dispatch settled', () => {
   it('keeps the worker running while that task is open, and lets it rest once the task settles', async () => {
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const rig = await createRestTestRig({
       hasOpenDispatch: (current) => structuredWorkerOwesWork(db, current)
     })

@@ -1,6 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from './orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it } from 'vitest'
 import { OrcaRuntimeService } from './orca-runtime'
-import { OrchestrationDb } from './orchestration/db'
+import type { OrchestrationDb } from './orchestration/db'
 
 const TAB = 'worker-tab'
 const LEAF = '11111111-1111-4111-8111-111111111111'
@@ -16,7 +17,7 @@ afterEach(() => {
 })
 
 function seedWorker(hostScope: string, settled = true) {
-  db = new OrchestrationDb(':memory:')
+  db = createCapacityReadyOrchestrationDb(':memory:')
   runtime = new OrcaRuntimeService(null)
   runtime.setOrchestrationDb(db)
   const started = db.createStartingWorkerDispatch({

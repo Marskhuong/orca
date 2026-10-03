@@ -1,7 +1,7 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { describe, expect, it } from 'vitest'
 import {
   OrcaRuntimeService,
-  OrchestrationDb,
   createRootDispatch,
   makePaneKey
 } from '../orca-runtime-test-mocks.spec'
@@ -72,7 +72,7 @@ describe('OrcaRuntimeService orchestration lineage across restart', () => {
       const terminal = terminals.find((entry) => entry.name === name) as RestartTerminal
       return makePaneKey(terminal.tabId, terminal.leafId)
     }
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const before = new OrcaRuntimeService(store)
     try {
       const beforeHandles = Object.fromEntries(
@@ -184,7 +184,7 @@ describe('OrcaRuntimeService orchestration lineage across restart', () => {
       'tab-coordinator',
       '11111111-1111-4111-8111-111111111111'
     )
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     const runtime = new OrcaRuntimeService(store)
     try {
       const workerHandle = runtime.preAllocateHandleForPty('pty-worker')

@@ -47,7 +47,7 @@
   "overrides": [
     {
       "files": [
-        "**/*.test.{ts,tsx}",
+        "**/*.test.{ts,tsx,mjs}",
         "**/*.spec.{ts,tsx}",
         "tests/**/*.{ts,tsx}",
         "**/__mocks__/**"

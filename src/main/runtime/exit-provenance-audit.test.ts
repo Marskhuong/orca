@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from './orchestration/capacity-ready-db.test-support'
 // STA-4603 / STA-4536: an operator close, a clean finish and a crash must not
 // leave the same record. Each case here was byte-identical before the fix.
 import { afterEach, describe, expect, it } from 'vitest'
@@ -5,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { OrcaRuntimeService } from './orca-runtime'
-import { OrchestrationDb } from './orchestration/db'
+import type { OrchestrationDb } from './orchestration/db'
 import type { DispatchContextRow } from './orchestration/types'
 import { createRootDispatch } from './orchestration/db/root-dispatch-test-fixture'
 
@@ -27,7 +28,7 @@ afterEach(() => {
 function createDb(): OrchestrationDb {
   const directory = mkdtempSync(join(tmpdir(), 'exit-provenance-'))
   directories.push(directory)
-  return new OrchestrationDb(join(directory, 'orchestration.db'))
+  return createCapacityReadyOrchestrationDb(join(directory, 'orchestration.db'))
 }
 
 function createRuntime(db: OrchestrationDb): OrcaRuntimeService {

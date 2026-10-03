@@ -1,9 +1,9 @@
+import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { describe, expect, it, vi } from 'vitest'
 import {
   AGENT_STATUS_STALE_AFTER_MS,
   FOLDER_WORKSPACE_INSTANCE_SEPARATOR,
   OrcaRuntimeService,
-  OrchestrationDb,
   createRootDispatch,
   join,
   makePaneKey,
@@ -73,7 +73,7 @@ describe('OrcaRuntimeService', () => {
       const terminal = terminalByName[name]
       return makePaneKey(terminal.tabId, terminal.leafId)
     }
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const runA = db.createRun({
         objective: 'coordinate run A',
@@ -213,7 +213,7 @@ describe('OrcaRuntimeService', () => {
         paneTitle: null
       }))
     })
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       runtime.setOrchestrationDb(db)
       runtime.attachWindow(1)
@@ -344,7 +344,7 @@ describe('OrcaRuntimeService', () => {
       paneRuntimeId: index + 1
     }))
     const handles = terminals.map((terminal) => runtime.preAllocateHandleForPty(terminal.ptyId))
-    const db = new OrchestrationDb(':memory:')
+    const db = createCapacityReadyOrchestrationDb(':memory:')
     try {
       const run = db.createRun({
         objective: 'query count oracle',

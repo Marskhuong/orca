@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from './orchestration/capacity-ready-db.test-support'
 // A worker's result reaching the structured chat that coordinates it, end to end in one process.
 //
 // Real: the structured agent-session host, its record store, journal, lease and Codex adapter; the
@@ -21,7 +22,7 @@ import type { AgentSessionJournal } from '../native-chat/agent-session-journal/j
 import { AGENT_SESSION_MAX_NEW_OPERATION_AGE_MS } from '../../shared/agent-session-host-authority'
 import { refuse } from '../../shared/agent-session-wire-refusals'
 import { OrcaRuntimeService } from './orca-runtime'
-import { OrchestrationDb } from './orchestration/db'
+import type { OrchestrationDb } from './orchestration/db'
 import { localOrchestrationCliCommand } from './orchestration/cli-command'
 import { formatMessagePointer } from './orchestration/formatter'
 import { currentRunCoordinatorOrcaSessionId } from './orchestration/db/runs/run-coordinator-orca-session'
@@ -241,7 +242,7 @@ beforeEach(async () => {
   resetProviderFaults()
   root = await mkdtemp(join(tmpdir(), 'orca-structured-coordinator-mail-'))
   codex = fakeCodex()
-  db = new OrchestrationDb(':memory:')
+  db = createCapacityReadyOrchestrationDb(':memory:')
   runtime = startRuntime()
   host = await ensureStructuredAgentSessionHost({
     stateDirectory: root,

@@ -1,3 +1,4 @@
+import { createCapacityReadyOrchestrationDb } from '../../orchestration/capacity-ready-db.test-support'
 /**
  * What `worker-stop` may claim it did to a structured worker.
  *
@@ -8,7 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../orca-runtime'
-import { OrchestrationDb } from '../../orchestration/db'
+import type { OrchestrationDb } from '../../orchestration/db'
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
 import {
   mintStructuredWorkerPaneKey,
@@ -29,7 +30,7 @@ describe('worker-stop on a structured worker this runtime cannot reach', () => {
   beforeEach(() => {
     structuredWorkerIdentities.clear()
     setStructuredAgentSessionHost(null)
-    db = new OrchestrationDb(':memory:')
+    db = createCapacityReadyOrchestrationDb(':memory:')
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
     // The install is what release already does; here it is a no-op so the host stays absent.

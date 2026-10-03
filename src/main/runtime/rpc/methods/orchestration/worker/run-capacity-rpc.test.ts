@@ -4,11 +4,11 @@ import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { createOrchestrationWorkerReleaseHarness } from './worker-release.test-support'
 import { capacityEvidence } from '../../../../../../shared/orchestration-run-capacity.test-support'
 import { recordRunCapacity } from '../../../../orchestration/run-capacity-state'
-import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../../shared/protocol-version'
 import * as workerTopology from './worker-topology'
 import { eraseRpcMethods } from '../../../core'
 import { startFederatedWorker } from '../federation/federated-worker-start'
 import {
+  ORCHESTRATION_CONTRACT_VERSION,
   ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'

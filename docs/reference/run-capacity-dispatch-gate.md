@@ -8,6 +8,34 @@ error envelope. The CLI's existing formatter preserves this code and recovery da
 
 ## Baseline and upstream
 
+### Stable release integration
+
+The release baseline is `v1.4.219`, commit
+`e705cac04a1db7e7e2184746e912142d34ca838b`. The installed app reports
+1.4.219 and daemon protocol 38, matching this tag. Its embedded commit
+`d3e592365ef90c668a301c631ec7bbd397b850a4` identifies the release workflow
+revision: the release workflow checks out the tag, but packaging prefers
+`GITHUB_SHA` over Git HEAD when writing this metadata. That field alone must
+not be used as source provenance. The exploratory integration on that workflow
+revision was preserved separately and is not the stable release candidate.
+
+The clean branch `Marskhuong/fix-runtime-capacity-release-stable-1.4.219`
+ports `14accfe2007b9ab24d6de08dd9bc6853effae25a` and
+`c5365b5f6224dae9d81c1c5871b48c773c558d54`. Neither the stable tag nor
+upstream `5e6587197a` contains an equivalent capacity gate. Conflicts preserve
+stable CLI wording, regenerate bundled guides, and adjust registry counts for
+the two new methods. The capacity regression is retained; tests for unrelated
+features absent from stable are omitted. Existing lifecycle fixtures explicitly
+record capacity through the existing test-only database factory.
+
+The package version is 1.4.220 so the supported `build:mac` script produces a
+unique `1.4.220-local.<timestamp>.<commit>` candidate above installed 1.4.219.
+This local version does not claim an upstream stable 1.4.220 release. The local
+updater still requires a matching installed-app signature; source validation
+does not waive that requirement.
+
+### Original implementation audit
+
 - Installed source baseline: `84daac2de447bf1966ea573fae03ff796ce5779f`.
 - Branch: `fix/runtime-capacity-dispatch-gate`.
 - Baseline regression commit: `6e45f4055f`. The test failed because a starting worker
@@ -25,16 +53,16 @@ the registered handler through the durable mutation executor. `workers.ts` resol
 the coordinator's current Run and checks capacity before choosing the existing
 worker mode and invoking the local or federated start service.
 
-| Operation | Service and persistence boundary | Execution or allocation after the gate |
-| --- | --- | --- |
-| Worker, reviewer, secondary worker | `workers.ts` → `startLocalWorker` → `createStartingWorkerDispatch` | `placeWorkerAgent`: worktree, terminal, or structured session creation; preamble delivery |
-| Existing terminal reuse | Same local worker path with `params.terminal` | Adopts terminal authority and delivers the Task preamble |
-| Manual dispatch, including injection | `dispatch-methods.ts` → `createDispatchContext` | Capability issuance and `sendTerminalAgentPrompt` for injection |
-| Nested worker execution | Same worker/manual paths, with `resolveDispatchCreator` and child depth | New Task/Dispatch and worker surface |
-| Retry/redispatch | `createStartingWorkerDispatch`, with `retryOf` validation | A new Dispatch and new execution; previous worker is unchanged |
-| Federation home | `startFederatedWorker` → `createStartingWorkerDispatch` | RPC `orchestration.federationAttachStart` with registered capacity evidence |
-| Federation execution host | `federation.ts` → `createRemoteDispatchAttachment` | Remote worktree/terminal creation and preamble delivery |
-| Legacy automatic coordinator | `dispatchReadyTasks` preflight → `dispatchTaskToWorker` → `createDispatchContext` | Terminal allocation and Task prompt delivery |
+| Operation                            | Service and persistence boundary                                                  | Execution or allocation after the gate                                                    |
+| ------------------------------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Worker, reviewer, secondary worker   | `workers.ts` → `startLocalWorker` → `createStartingWorkerDispatch`                | `placeWorkerAgent`: worktree, terminal, or structured session creation; preamble delivery |
+| Existing terminal reuse              | Same local worker path with `params.terminal`                                     | Adopts terminal authority and delivers the Task preamble                                  |
+| Manual dispatch, including injection | `dispatch-methods.ts` → `createDispatchContext`                                   | Capability issuance and `sendTerminalAgentPrompt` for injection                           |
+| Nested worker execution              | Same worker/manual paths, with `resolveDispatchCreator` and child depth           | New Task/Dispatch and worker surface                                                      |
+| Retry/redispatch                     | `createStartingWorkerDispatch`, with `retryOf` validation                         | A new Dispatch and new execution; previous worker is unchanged                            |
+| Federation home                      | `startFederatedWorker` → `createStartingWorkerDispatch`                           | RPC `orchestration.federationAttachStart` with registered capacity evidence               |
+| Federation execution host            | `federation.ts` → `createRemoteDispatchAttachment`                                | Remote worktree/terminal creation and preamble delivery                                   |
+| Legacy automatic coordinator         | `dispatchReadyTasks` preflight → `dispatchTaskToWorker` → `createDispatchContext` | Terminal allocation and Task prompt delivery                                              |
 
 There is no separate reviewer or federation-execution RPC in this source: those
 roles use the worker and attachment paths above. Context-only manual dispatch is
