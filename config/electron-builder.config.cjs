@@ -57,6 +57,10 @@ const isWinAdhoc = process.env.ORCA_WIN_ADHOC === '1'
 const isWinDevChannel = isWinHourly || isWinDaily || isWinAdhoc
 const isMacRelease = process.env.ORCA_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
 const isMacLocalMk = process.env.ORCA_MAC_LOCAL_MK === '1' && !isMacRelease
+const localMacSigningIdentity = isMacLocalMk ? process.env.ORCA_MAC_LOCAL_SIGN_IDENTITY : undefined
+if (isMacLocalMk && !/^[0-9A-F]{40}$/.test(localMacSigningIdentity ?? '')) {
+  throw new Error('Local MK packaging requires ORCA_MAC_LOCAL_SIGN_IDENTITY (certificate SHA-1).')
+}
 const isLinuxArm64Release = process.env.ORCA_LINUX_ARM64_RELEASE === '1'
 const localBuildVersion =
   isMacRelease || isWinDevChannel ? undefined : process.env.ORCA_LOCAL_BUILD_VERSION
@@ -202,6 +206,8 @@ module.exports = {
     buildResources: 'resources/build'
   },
   files: [
+    // Previous MK outputs must not become inputs to the next rebuild.
+    ...(isMacLocalMk ? ['!dist{,/**/*}'] : []),
     '!**/.vscode/*',
     // Why: these repo-only inputs are either bundled into out/ or copied via
     // extraResources. Shipping them in app.asar bloats the desktop bundle.
@@ -531,7 +537,13 @@ module.exports = {
   },
   mac: {
     ...(isMacLocalMk
-      ? { identity: '-', helperBundleId: `${appId}.helper`, executableName: 'Orca' }
+      ? {
+          identity: localMacSigningIdentity,
+          type: 'development',
+          additionalArguments: ['--timestamp=none'],
+          helperBundleId: `${appId}.helper`,
+          executableName: 'Orca'
+        }
       : {}),
     // Why rank Alternate: Orca joins Finder's "Open With" list for Markdown without claiming
     // LSHandlerRank ownership, so whichever editor the user already prefers stays the default.
@@ -629,7 +641,7 @@ module.exports = {
   },
   // Why: release builds should fail if signing is unavailable instead of
   // silently downgrading to ad-hoc artifacts that look shippable in CI logs.
-  forceCodeSigning: isMacRelease,
+  forceCodeSigning: isMacRelease || isMacLocalMk,
   dmg: {
     artifactName: 'orca-macos-${arch}.${ext}'
   },
@@ -783,7 +795,7 @@ async function signMacComputerUseHelper(helperAppPath, packager) {
       ? await packager.codeSigningInfo.value
       : null
   const identity = isMacLocalMk
-    ? '-'
+    ? localMacSigningIdentity
     : (process.env.ORCA_COMPUTER_MACOS_SIGN_IDENTITY ??
       process.env.CSC_NAME ??
       findInstalledMacSigningIdentity(codeSigningInfo?.keychainFile) ??
@@ -811,7 +823,7 @@ async function signMacStandaloneHelper(helperPath, helperName, packager) {
       ? await packager.codeSigningInfo.value
       : null
   const identity = isMacLocalMk
-    ? '-'
+    ? localMacSigningIdentity
     : (process.env.CSC_NAME ??
       findInstalledMacSigningIdentity(codeSigningInfo?.keychainFile) ??
       (isMacRelease ? null : '-'))

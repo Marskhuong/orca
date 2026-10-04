@@ -10,6 +10,7 @@ const MUTABLE_BUILD_ENV = [
   'ORCA_MAC_ADHOC',
   'ORCA_MAC_RELEASE',
   'ORCA_MAC_LOCAL_MK',
+  'ORCA_MAC_LOCAL_SIGN_IDENTITY',
   'ORCA_HOURLY_BUILD_VERSION',
   'ORCA_DAILY_BUILD_VERSION',
   'ORCA_ADHOC_BUILD_VERSION',
@@ -45,12 +46,25 @@ const withDailyEnv = (assert) => withEnv({ ORCA_MAC_DAILY: '1' }, assert)
 const withAdhocEnv = (assert) => withEnv({ ORCA_MAC_ADHOC: '1' }, assert)
 
 describe('electron-builder mac channel config', () => {
+  it('refuses MK packaging without a stable fingerprint', () => {
+    expect(() => withEnv({ ORCA_MAC_LOCAL_MK: '1' }, () => {})).toThrow(
+      'ORCA_MAC_LOCAL_SIGN_IDENTITY'
+    )
+    expect(() =>
+      withEnv({ ORCA_MAC_LOCAL_MK: '1', ORCA_MAC_LOCAL_SIGN_IDENTITY: '-' }, () => {})
+    ).toThrow('ORCA_MAC_LOCAL_SIGN_IDENTITY')
+  })
+
   it('uses a separate recursively signed local MK identity with no special entitlements', () => {
-    withEnv({ ORCA_MAC_LOCAL_MK: '1' }, (config) => {
+    withEnv({ ORCA_MAC_LOCAL_MK: '1', ORCA_MAC_LOCAL_SIGN_IDENTITY: 'A'.repeat(40) }, (config) => {
       expect(config.appId).toBe('com.stablyai.orca.mk')
       expect(config.productName).toBe('Orca MK')
       expect(config.extraMetadata.productName).toBe('Orca MK')
-      expect(config.mac.identity).toBe('-')
+      expect(config.mac.identity).toBe('A'.repeat(40))
+      expect(config.mac.type).toBe('development')
+      expect(config.mac.additionalArguments).toEqual(['--timestamp=none'])
+      expect(config.forceCodeSigning).toBe(true)
+      expect(config.files).toContain('!dist{,/**/*}')
       expect(config.mac.helperBundleId).toBe('com.stablyai.orca.mk.helper')
       expect(config.mac.executableName).toBe('Orca')
       expect(config.mac.hardenedRuntime).toBe(false)
