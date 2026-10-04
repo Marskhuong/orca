@@ -103,7 +103,9 @@ export const DispatchParams = z.object({
   dryRun: OptionalBoolean,
   returnPreamble: OptionalBoolean,
   devMode: OptionalBoolean,
-  run: OptionalString
+  run: OptionalString,
+  // Why: the route the coordinator chose for the target agent, checked against the Run posture.
+  route: OptionalString
 })
 
 /** An Orca agent session id; the answer is its conversation's Orca session ID. */

@@ -148,6 +148,72 @@ describe('governed route dispatch and agent-launch fence', () => {
     expectNoWorkerEffects()
   })
 
+  describe('existing agent terminals', () => {
+    function terminalRuns(agentIdentity: string): void {
+      vi.mocked(h.runtime.showTerminal).mockImplementation(
+        async (handle) =>
+          // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: only agentIdentity is read by the route check.
+          ({ handle, worktreeId: 'repo::worktree', status: 'running', agentIdentity }) as never
+      )
+    }
+
+    it.each([true, false])(
+      'refuses manual dispatch (inject=%s) to a retired agent terminal before any Dispatch',
+      async (inject) => {
+        terminalRuns('qwen-code')
+        const task = h.db.createTask({ runId: h.activeRunId, spec: 'routine' })
+        await expect(
+          h.call('orchestration.dispatch', {
+            task: task.id,
+            from: 'term_coord',
+            to: 'term_worker',
+            inject
+          })
+        ).rejects.toMatchObject({
+          code: 'ROUTE_RETIRED_BY_POLICY',
+          data: { effectsApplied: false, workerCreated: false }
+        })
+        expect(h.runtime.sendTerminalAgentPrompt).not.toHaveBeenCalled()
+        expect(h.db.getDispatchContext(task.id)).toBeUndefined()
+        expect(h.db.getTask(task.id)?.status).toBe('ready')
+      }
+    )
+
+    it('refuses worker-start reuse of a retired agent terminal', async () => {
+      terminalRuns('qwen-code')
+      await expect(
+        h.call('orchestration.workerStart', {
+          from: 'term_coord',
+          spec: 'routine',
+          terminal: 'term_worker'
+        })
+      ).rejects.toMatchObject({ code: 'ROUTE_RETIRED_BY_POLICY' })
+      expect(h.runtime.sendTerminalAgentPrompt).not.toHaveBeenCalled()
+      expect(h.db.listTasks({ runId: h.activeRunId })).toEqual([])
+    })
+
+    it('checks a manual dispatch route against recorded readiness', async () => {
+      terminalRuns('opencode')
+      await record([
+        { route_identity: 'deepseek', readiness: 'NOT_READY' },
+        { route_identity: 'codex', readiness: 'READY' }
+      ])
+      const task = h.db.createTask({ runId: h.activeRunId, spec: 'review' })
+      await expect(
+        h.call('orchestration.dispatch', {
+          task: task.id,
+          from: 'term_coord',
+          to: 'term_worker',
+          route: 'deepseek'
+        })
+      ).rejects.toMatchObject({ code: 'ROUTE_NOT_READY' })
+      await expect(
+        h.call('orchestration.dispatch', { task: task.id, from: 'term_coord', to: 'term_worker' })
+      ).rejects.toMatchObject({ code: 'ROUTE_IDENTITY_REQUIRED' })
+      expect(h.db.getDispatchContext(task.id)).toBeUndefined()
+    })
+  })
+
   it('still requires the capacity handshake before evaluating the route', async () => {
     h.db.db.prepare('DELETE FROM run_capacity_handshakes').run()
     await expect(

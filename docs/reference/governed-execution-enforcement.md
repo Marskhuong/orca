@@ -71,8 +71,10 @@ can only cause a refusal, never authorize anything.
   transport. Their text is never parsed, so typing a provider CLI into a shell is
   outside this enforcement. A same-user process that strips its own Orca identity, or a
   provider CLI started outside Orca, is outside Orca's technical control.
-- Manual `orchestration.dispatch` to an existing terminal and the legacy automatic
-  coordinator keep the capacity gate; they carry no route identity.
+- Manual `orchestration.dispatch` (with optional `--route`) and `worker-start --terminal`
+  reuse take the target terminal's host-resolved agent identity as the route, so a
+  retired agent terminal (for example a hand-started Qwen Code) is refused and readiness
+  applies. The legacy automatic coordinator keeps the capacity gate only.
 - The fence applies while a coordinator stays bound to a Run; Orca has no Run-close
   contract that unbinds it.
 

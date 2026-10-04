@@ -49,6 +49,18 @@ export function requireRunCapacity(db: OrchestrationDb, runId: string): RunCapac
   throw new OrchestrationError(refusal.code, refusal.message, refusal.data)
 }
 
+/** The host-resolved agent running in an existing terminal, when the host can name it. */
+export async function terminalAgentIdentity(
+  runtime: { showTerminal(handle: string): Promise<{ agentIdentity?: string }> },
+  handle: string
+): Promise<string | undefined> {
+  try {
+    return (await runtime.showTerminal(handle)).agentIdentity
+  } catch {
+    return undefined
+  }
+}
+
 /** Policy eligibility and readiness for the route this dispatch names or implies; capacity first. */
 export function requireRouteDispatchable(
   db: OrchestrationDb,

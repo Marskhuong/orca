@@ -13,7 +13,10 @@ import {
   resolveWorkerStartReadinessTimeoutMs
 } from '../../../../../../shared/orchestration-timing-budgets'
 import { assertWorkerStartTaskSpecWithinPromptBudget } from './worker-start-prompt-budget'
-import { requireRouteDispatchable } from '../../../../orchestration/run-capacity-state'
+import {
+  requireRouteDispatchable,
+  terminalAgentIdentity
+} from '../../../../orchestration/run-capacity-state'
 
 export const ORCHESTRATION_WORKER_START_METHODS = [
   defineMethod({
@@ -46,7 +49,12 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
       const existingTask = params.task ? db.getTask(params.task) : undefined
       requireRouteDispatchable(db, run.id, {
         route: params.route,
-        agent: params.agent,
+        // Why: a reused terminal already runs an agent; its host-resolved identity names the route.
+        agent:
+          params.agent ??
+          (params.terminal && !params.on
+            ? await terminalAgentIdentity(runtime, params.terminal)
+            : undefined),
         model: params.model
       })
       if (params.task && (!existingTask || existingTask.run_id !== run.id)) {

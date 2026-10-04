@@ -11,6 +11,10 @@ import {
   taskNotStartableError
 } from '../../../../orchestration/task-dispatch-refusal'
 import { resolveRunScope } from './run-scope'
+import {
+  requireRouteDispatchable,
+  terminalAgentIdentity
+} from '../../../../orchestration/run-capacity-state'
 import { DispatchParams, DispatchShowParams } from '../schemas'
 import {
   orcaSessionIdOrHandle,
@@ -129,6 +133,12 @@ export const ORCHESTRATION_DISPATCH_METHODS = [
         )
       }
 
+      // Why: the target terminal's agent is the route this Task would run on; refuse a retired,
+      // unauthorized, or not-READY route before the Dispatch or any injected prompt exists.
+      requireRouteDispatchable(db, run.id, {
+        route: params.route,
+        agent: await terminalAgentIdentity(runtime, to)
+      })
       revalidateLegacyCoordinator?.()
       const ctx = db.createDispatchContext({
         taskId: params.task,

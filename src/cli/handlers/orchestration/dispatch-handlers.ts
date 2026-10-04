@@ -7,6 +7,8 @@ import { callOrchestrationMutation } from './mutation-request'
 import { isDevCliInvocation } from './runtime-compatibility'
 import { resolveCoordinatorTerminalHandle } from './terminal-identity'
 import { injectedSessionAddress } from '../../../shared/agent-session-caller-env'
+import type { RuntimeStatus } from '../../../shared/runtime-types'
+import { ROUTE_DISPATCH_RUNTIME_CAPABILITY } from '../../../shared/orchestration-route-dispatch'
 
 export const ORCHESTRATION_DISPATCH_HANDLER: Record<string, CommandHandler> = {
   'orchestration dispatch': async ({ flags, client, cwd, json }) => {
@@ -15,6 +17,17 @@ export const ORCHESTRATION_DISPATCH_HANDLER: Record<string, CommandHandler> = {
     const returnPreamble = flags.has('return-preamble') ? true : undefined
     // Why: --to is only required for non-dry-run; the RPC handler re-enforces.
     const to = dryRun ? getOptionalStringFlag(flags, 'to') : getRequiredStringFlag(flags, 'to')
+    const route = getOptionalStringFlag(flags, 'route')
+    // Why: an older runtime strips the unknown field, which would silently skip the route check.
+    if (route) {
+      const status = await client.call<RuntimeStatus>('status.get')
+      if (!status.result.capabilities?.includes(ROUTE_DISPATCH_RUNTIME_CAPABILITY)) {
+        throw new RuntimeClientError(
+          'incompatible_runtime',
+          'The connected Orca runtime cannot check --route readiness. Nothing was dispatched; update or restart Orca and try again.'
+        )
+      }
+    }
     const result = await callOrchestrationMutation<{
       dispatch: { id: string; task_id: string; status: string } | null
       injected?: boolean
@@ -26,6 +39,7 @@ export const ORCHESTRATION_DISPATCH_HANDLER: Record<string, CommandHandler> = {
       to,
       from,
       inject: flags.has('inject') ? true : undefined,
+      ...(route ? { route } : {}),
       dryRun,
       returnPreamble,
       devMode: isDevCliInvocation()
