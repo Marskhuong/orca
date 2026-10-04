@@ -52,6 +52,7 @@ describe('electron-builder mac channel config', () => {
       expect(config.extraMetadata.productName).toBe('Orca MK')
       expect(config.mac.identity).toBe('-')
       expect(config.mac.helperBundleId).toBe('com.stablyai.orca.mk.helper')
+      expect(config.mac.executableName).toBe('Orca')
       expect(config.mac.hardenedRuntime).toBe(false)
       expect(config.mac.notarize).toBe(false)
       expect(config.mac.entitlements).toBe('resources/build/entitlements.local.mac.plist')
