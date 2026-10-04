@@ -9,6 +9,7 @@ const MUTABLE_BUILD_ENV = [
   'ORCA_MAC_DAILY',
   'ORCA_MAC_ADHOC',
   'ORCA_MAC_RELEASE',
+  'ORCA_MAC_LOCAL_MK',
   'ORCA_HOURLY_BUILD_VERSION',
   'ORCA_DAILY_BUILD_VERSION',
   'ORCA_ADHOC_BUILD_VERSION',
@@ -44,6 +45,28 @@ const withDailyEnv = (assert) => withEnv({ ORCA_MAC_DAILY: '1' }, assert)
 const withAdhocEnv = (assert) => withEnv({ ORCA_MAC_ADHOC: '1' }, assert)
 
 describe('electron-builder mac channel config', () => {
+  it('uses a separate recursively signed local MK identity with no special entitlements', () => {
+    withEnv({ ORCA_MAC_LOCAL_MK: '1' }, (config) => {
+      expect(config.appId).toBe('com.stablyai.orca.mk')
+      expect(config.productName).toBe('Orca MK')
+      expect(config.extraMetadata.productName).toBe('Orca MK')
+      expect(config.mac.identity).toBe('-')
+      expect(config.mac.helperBundleId).toBe('com.stablyai.orca.mk.helper')
+      expect(config.mac.hardenedRuntime).toBe(false)
+      expect(config.mac.notarize).toBe(false)
+      expect(config.mac.entitlements).toBe('resources/build/entitlements.local.mac.plist')
+      expect(config.mac.entitlementsInherit).toBe(config.mac.entitlements)
+    })
+  })
+
+  it('keeps release identity even if the local MK flag is inherited', () => {
+    withEnv({ ORCA_MAC_LOCAL_MK: '1', ORCA_MAC_RELEASE: '1' }, (config) => {
+      expect(config.appId).toBe('com.stablyai.orca')
+      expect(config.productName).toBe('Orca')
+      expect(config.mac.identity).toBeUndefined()
+      expect(config.mac.entitlements).toBe('resources/build/entitlements.mac.plist')
+    })
+  })
   // Why: Squirrel.Mac swaps the .app in place only when the replacement carries the
   // same bundle id and a valid Developer ID signature. A hourly built on the local
   // (com.stablyai.orca.local, ad-hoc) identity would be un-installable over a real

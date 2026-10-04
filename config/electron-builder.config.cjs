@@ -56,6 +56,7 @@ const isWinDaily = process.env.ORCA_WIN_DAILY === '1'
 const isWinAdhoc = process.env.ORCA_WIN_ADHOC === '1'
 const isWinDevChannel = isWinHourly || isWinDaily || isWinAdhoc
 const isMacRelease = process.env.ORCA_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
+const isMacLocalMk = process.env.ORCA_MAC_LOCAL_MK === '1' && !isMacRelease
 const isLinuxArm64Release = process.env.ORCA_LINUX_ARM64_RELEASE === '1'
 const localBuildVersion =
   isMacRelease || isWinDevChannel ? undefined : process.env.ORCA_LOCAL_BUILD_VERSION
@@ -82,7 +83,7 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'orca-adhoc'
       : null
-const appId = 'com.stablyai.orca'
+const appId = isMacLocalMk ? 'com.stablyai.orca.mk' : 'com.stablyai.orca'
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
   to: 'onboarding/feature-wall'
@@ -182,14 +183,21 @@ const windowsRuntimeResources = existsSync(
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName: 'Orca',
+  productName: isMacLocalMk ? 'Orca MK' : 'Orca',
   protocols: [{ name: 'Orca', schemes: ['orca'] }],
   toolsets: { appimage: '1.0.3' },
-  ...(devChannelBuildVersion
-    ? { extraMetadata: { version: devChannelBuildVersion } }
-    : localBuildVersion
-      ? { extraMetadata: { version: localBuildVersion } }
-      : {}),
+  ...(isMacLocalMk || devChannelBuildVersion || localBuildVersion
+    ? {
+        extraMetadata: {
+          ...(isMacLocalMk ? { productName: 'Orca MK' } : {}),
+          ...(devChannelBuildVersion
+            ? { version: devChannelBuildVersion }
+            : localBuildVersion
+              ? { version: localBuildVersion }
+              : {})
+        }
+      }
+    : {}),
   directories: {
     buildResources: 'resources/build'
   },
@@ -334,6 +342,15 @@ module.exports = {
     assertBundledRipgrepInstalled()
     assertOrcadTemplateBuilt()
     assertMobileWebBundleBuilt(mobileWebBundleDir)
+  },
+  afterSign: (context) => {
+    if (!isMacLocalMk || context.electronPlatformName !== 'darwin') {
+      return
+    }
+    const appPath = join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`)
+    execFileSync('codesign', ['--verify', '--deep', '--strict', '--verbose=4', appPath], {
+      stdio: 'inherit'
+    })
   },
   afterPack: async (context) => {
     const resourcesDir =
@@ -513,6 +530,7 @@ module.exports = {
     include: resolve(__dirname, 'nsis', 'orca-installer-hooks.nsh')
   },
   mac: {
+    ...(isMacLocalMk ? { identity: '-', helperBundleId: `${appId}.helper` } : {}),
     // Why rank Alternate: Orca joins Finder's "Open With" list for Markdown without claiming
     // LSHandlerRank ownership, so whichever editor the user already prefers stays the default.
     // Why one entry per extension: app-builder-lib globs `*.${ext}`, which an array would break.
@@ -524,8 +542,12 @@ module.exports = {
       rank: 'Alternate'
     })),
     icon: 'resources/build/icon.icns',
-    entitlements: 'resources/build/entitlements.mac.plist',
-    entitlementsInherit: 'resources/build/entitlements.mac.plist',
+    entitlements: isMacLocalMk
+      ? 'resources/build/entitlements.local.mac.plist'
+      : 'resources/build/entitlements.mac.plist',
+    entitlementsInherit: isMacLocalMk
+      ? 'resources/build/entitlements.local.mac.plist'
+      : 'resources/build/entitlements.mac.plist',
     signIgnore: [...bundledRipgrepMacSignIgnore, ...orcadTemplateMacSignIgnore],
     extendInfo: {
       NSAppleEventsUsageDescription:
@@ -747,15 +769,23 @@ async function signMacComputerUseHelper(helperAppPath, packager) {
     }
     return
   }
+  if (isMacLocalMk) {
+    execFileSync('/usr/libexec/PlistBuddy', [
+      '-c',
+      `Set :CFBundleIdentifier ${appId}.computer-use`,
+      join(helperAppPath, 'Contents', 'Info.plist')
+    ])
+  }
   const codeSigningInfo =
     isMacRelease && process.env.CSC_LINK && packager?.codeSigningInfo?.value
       ? await packager.codeSigningInfo.value
       : null
-  const identity =
-    process.env.ORCA_COMPUTER_MACOS_SIGN_IDENTITY ??
-    process.env.CSC_NAME ??
-    findInstalledMacSigningIdentity(codeSigningInfo?.keychainFile) ??
-    (isMacRelease ? null : '-')
+  const identity = isMacLocalMk
+    ? '-'
+    : (process.env.ORCA_COMPUTER_MACOS_SIGN_IDENTITY ??
+      process.env.CSC_NAME ??
+      findInstalledMacSigningIdentity(codeSigningInfo?.keychainFile) ??
+      (isMacRelease ? null : '-'))
   if (!identity) {
     throw new Error('Missing signing identity for Orca Computer Use helper app')
   }
@@ -778,10 +808,11 @@ async function signMacStandaloneHelper(helperPath, helperName, packager) {
     isMacRelease && process.env.CSC_LINK && packager?.codeSigningInfo?.value
       ? await packager.codeSigningInfo.value
       : null
-  const identity =
-    process.env.CSC_NAME ??
-    findInstalledMacSigningIdentity(codeSigningInfo?.keychainFile) ??
-    (isMacRelease ? null : '-')
+  const identity = isMacLocalMk
+    ? '-'
+    : (process.env.CSC_NAME ??
+      findInstalledMacSigningIdentity(codeSigningInfo?.keychainFile) ??
+      (isMacRelease ? null : '-'))
   if (!identity) {
     throw new Error(`Missing signing identity for ${helperName} helper`)
   }
