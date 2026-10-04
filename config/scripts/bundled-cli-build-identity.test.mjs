@@ -133,4 +133,24 @@ describe('MK bundled CLI build invariant', () => {
     const after = sourceIdentity(root, { ORCA_MAC_LOCAL_MK: '1' })
     expect(after.sourceFingerprint).not.toBe(before.sourceFingerprint)
   })
+  it('keeps the reused selector transaction in CLI shared output across main builds', () => {
+    const root = fixture()
+    writeFileSync(
+      join(root, 'out/shared/cli-command-filesystem-transaction.js'),
+      'module.exports = {}'
+    )
+    recordArtifactBuild('cli', root, identity)
+    rmSync(join(root, 'out/main'), { recursive: true })
+    mkdirSync(join(root, 'out/main'))
+    writeFileSync(join(root, 'out/main/index.js'), 'module.exports = {}')
+    recordArtifactBuild('main', root, identity)
+    const resources = packaged(root)
+    verifyPackagedCli(resources, identity, 'darwin')
+    expect(
+      readFileSync(
+        join(resources, 'app.asar.unpacked/out/shared/cli-command-filesystem-transaction.js'),
+        'utf8'
+      )
+    ).toBe('module.exports = {}')
+  })
 })

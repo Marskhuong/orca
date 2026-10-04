@@ -58,7 +58,7 @@ async function selectorEvidence(selector, transaction) {
 }
 
 async function loadTransaction() {
-  return import('../../out/main/cli/cli-command-filesystem-transaction.js')
+  return import('../../out/shared/cli-command-filesystem-transaction.js')
 }
 
 export async function installMkCliSelector({
