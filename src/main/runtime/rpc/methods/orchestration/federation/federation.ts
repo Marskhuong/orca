@@ -1,3 +1,4 @@
+import { requireFederationAttachRoute } from './federation-route-preflight'
 import type { TuiAgent } from '../../../../../../shared/tui-agent'
 import { describeTerminalWaitBlockedReason } from '../../../../../../shared/terminal-wait-blocked-reason-legacy-alias'
 import {
@@ -66,6 +67,8 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS = [
           existingPlacement: 'an exact existing folder workspace'
         })
       }
+
+      await requireFederationAttachRoute(runtime, params, agent)
 
       const db = runtime.getOrchestrationDb()
       db.createRemoteDispatchAttachment({

@@ -1,3 +1,4 @@
+import { requireFederatedStartRoute } from './federation-route-preflight'
 import type { OrchestrationSessionCaller } from '../../../../orchestration/orchestration-caller-identity'
 import { isTuiAgent } from '../../../../../../shared/tui-agent-config'
 import type { RuntimeStatus } from '../../../../../../shared/runtime-types'
@@ -34,7 +35,6 @@ import {
 } from './federated-worker-start-receipts'
 import { parseTaskDeps } from '../worker/task-deps-argument'
 import { requireRunCapacity } from '../../../../orchestration/run-capacity-state'
-import { RUN_CAPACITY_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-run-capacity'
 
 export async function startFederatedWorker(args: {
   params: WorkerStartInput
@@ -113,13 +113,12 @@ export async function startFederatedWorker(args: {
   const supportsControlMail = status.capabilities?.includes(
     ORCHESTRATION_FEDERATION_CONTROL_MAIL_RUNTIME_CAPABILITY
   )
-  if (!status.capabilities?.includes(RUN_CAPACITY_RUNTIME_CAPABILITY)) {
-    throw new OrchestrationError(
-      'capability_unsupported',
-      `Connected server ${server.name} must support ${RUN_CAPACITY_RUNTIME_CAPABILITY} before worker start.`,
-      { effectsApplied: false }
-    )
-  }
+  await requireFederatedStartRoute({
+    ...args,
+    server,
+    status,
+    preflightTimeoutMs: budgets.preflightTimeoutMs
+  })
   const federationProtocolVersion =
     supportsControlMail &&
     status.capabilities?.includes(ORCHESTRATION_FEDERATION_LIFECYCLE_SETTLEMENT_RUNTIME_CAPABILITY)
@@ -197,6 +196,7 @@ export async function startFederatedWorker(args: {
               ? 'explicit_request'
               : 'orchestration_default'
             : undefined,
+          route: params.route,
           terminal: params.terminal,
           agent: params.agent,
           model: params.model,

@@ -100,6 +100,45 @@ describe('orchestration federation', () => {
     return homeDb.createTask({ spec: 'Audit Windows behavior', runId: run.id })
   }
 
+  it('refuses a retired remote terminal before allocating a home dispatch despite a READY route', async () => {
+    const task = createHomeTask()
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: fixture supplies the host identity read by the route gate; refusal assertions verify zero effects.
+    vi.mocked(workerRuntime.showTerminal).mockResolvedValue({
+      handle: 'term_windows_worker',
+      worktreeId: 'repo::windows-worktree',
+      status: 'running',
+      agentIdentity: 'qwen-code'
+    } as never)
+    const remoteCall = vi.spyOn(homeRuntime, 'callOrchestrationWorkerServer')
+    vi.mocked(remoteCall).mockImplementation(async (_server, method) =>
+      method === 'status.get'
+        ? workerRuntime.getStatus()
+        : { terminal: await workerRuntime.showTerminal('term_windows_worker') }
+    )
+    const response = await homeDispatcher.dispatch(
+      startRequest(task.id, {
+        worktree: 'id:repo::windows-worktree',
+        terminal: 'term_windows_worker',
+        agent: undefined,
+        route: 'codex',
+        repo: undefined,
+        name: undefined
+      })
+    )
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'ROUTE_RETIRED_BY_POLICY',
+        data: { effectsApplied: false, workerCreated: false, routeSelectedByRuntime: false }
+      }
+    })
+    expect(homeDb.getTask(task.id)?.status).toBe('ready')
+    expect(homeDb.getDispatchContext(task.id)).toBeUndefined()
+    expect(workerRuntime.createManagedWorktree).not.toHaveBeenCalled()
+    expect(workerRuntime.sendTerminalAgentPrompt).not.toHaveBeenCalled()
+    expect(remoteCall.mock.calls.map((call) => call[1])).toEqual(['status.get', 'terminal.show'])
+  })
+
   function restartWorkerRuntime(): void {
     workerRuntime = new OrcaRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)
@@ -648,6 +687,7 @@ describe('orchestration federation', () => {
     expect(workerRuntime.closeTerminal).toHaveBeenCalledWith('term_windows_worker')
     expect(homeDb.getTask(task.id)?.status).toBe('blocked')
 
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: fixture supplies the host identity read by the route gate; refusal assertions verify zero effects.
     vi.mocked(workerRuntime.showTerminal).mockResolvedValue({
       handle: 'term_windows_worker',
       worktreeId: 'repo::windows-worktree',

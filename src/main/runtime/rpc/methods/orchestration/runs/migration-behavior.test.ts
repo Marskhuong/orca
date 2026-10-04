@@ -1,3 +1,4 @@
+import { ROUTE_DISPATCH_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-route-dispatch'
 import { RUN_CAPACITY_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-run-capacity'
 import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -285,6 +286,7 @@ describe('orchestration migration behavior', () => {
                 capabilities: [
                   ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
                   RUN_CAPACITY_RUNTIME_CAPABILITY,
+                  ROUTE_DISPATCH_RUNTIME_CAPABILITY,
                   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
                 ]
               },

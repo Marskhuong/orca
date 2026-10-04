@@ -1,3 +1,4 @@
+import { capacityEvidence } from '../../../../../../shared/orchestration-run-capacity.test-support'
 import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrcaRuntimeService } from '../../../../orca-runtime'
@@ -55,9 +56,11 @@ describe('federated worker agent launch', () => {
       throw new Error('federationAttachStart method is not registered')
     }
 
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this fixture checks the ready receipt and effective launch below.
     const result = (await method.handler(
       method.params!.parse({
         runId: 'run-home',
+        capacityEvidence: capacityEvidence(),
         dispatchId: 'ctx_remote',
         taskId: 'task_remote',
         taskSpec: 'remote cursor worker',
