@@ -1,3 +1,4 @@
+import { isMkCliSelectorLauncher, mkCliSelectorLauncherPath } from './mk-cli-selector-launcher'
 import { existsSync } from 'node:fs'
 import { lstat, readFile, readlink } from 'node:fs/promises'
 import { basename, dirname, resolve } from 'node:path'
@@ -55,7 +56,12 @@ export class CliCommandInspection extends CliInstallLocation {
       const currentTarget = await readlink(commandPath)
       const resolvedCurrentTarget = resolve(dirname(commandPath), currentTarget)
       const resolvedLauncher = resolve(launcherPath)
-      const isInstalled = resolvedCurrentTarget === resolvedLauncher && existsSync(resolvedLauncher)
+      const isInstalled =
+        existsSync(resolvedLauncher) &&
+        (this.isMkMac
+          ? resolvedCurrentTarget === mkCliSelectorLauncherPath(this.homePath) &&
+            (await isMkCliSelectorLauncher(resolvedCurrentTarget, resolvedLauncher))
+          : resolvedCurrentTarget === resolvedLauncher)
       const isManagedStaleTarget =
         !isInstalled &&
         (resolvedCurrentTarget === resolvedLauncher ||
@@ -90,6 +96,9 @@ export class CliCommandInspection extends CliInstallLocation {
   }
 
   protected isManagedSymlinkTarget(resolvedTarget: string, launcherPath: string): boolean {
+    if (this.isMkMac) {
+      return false
+    }
     const expectedName = basename(launcherPath)
     if (this.isPackaged && this.isSiblingDevLauncherTarget(resolvedTarget, expectedName)) {
       return true

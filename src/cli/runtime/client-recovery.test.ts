@@ -3,7 +3,11 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY } from '../../shared/protocol-version'
+import {
+  RUNTIME_PROTOCOL_VERSION,
+  MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
+  ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY
+} from '../../shared/protocol-version'
 import { ORCHESTRATION_WORKER_START_CLIENT_GRACE_MS } from '../../shared/orchestration-timing-budgets'
 import { MAX_TIMER_DELAY_MS } from '../../shared/timer-delay'
 import { orchestrationMutationRecoveryError } from '../orchestration-mutation-recovery'
@@ -89,7 +93,11 @@ describe('RuntimeClient orchestration recovery identity', () => {
             ? {
                 id: request.id,
                 ok: true,
-                result: { capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY] },
+                result: {
+                  runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,
+                  minCompatibleRuntimeClientVersion: MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
+                  capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY]
+                },
                 _meta: { runtimeId: 'runtime-1' }
               }
             : {

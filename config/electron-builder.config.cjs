@@ -36,6 +36,11 @@ const {
   orcadTemplateMacSignIgnore
 } = require('./scripts/packaged-orcad-template.cjs')
 const { verifySkillsCliRuntime } = require('./scripts/verify-skills-cli-runtime.cjs')
+const {
+  sourceIdentity,
+  verifyBuildPair,
+  verifyPackagedCli
+} = require('./scripts/bundled-cli-build-identity.cjs')
 const { verifyCapacityCliRegistration } = require('./scripts/verify-capacity-cli-registration.cjs')
 const { verifyStaticAppImagePackage } = require('./scripts/static-appimage-package-contract.cjs')
 const { signWindowsUninstallerViaSignPath } = require('./scripts/windows-uninstaller-signing.cjs')
@@ -245,6 +250,7 @@ module.exports = {
     '!{.claude,.grok,.agents,.codex}{,/**/*}',
     '!Casks{,/**/*}',
     '!{AGENTS.md,CLAUDE.md,DEVELOPING.md,bundle-size-progress.md,ORCHESTRATION_IMPLEMENTATION_CHECKLIST.md,ORCHESTRATION_STRUCTURED_OUTPUT_DESIGN.md}',
+    '!out/orca-cli-build-start.json',
     '!out/**/*.test.js',
     // Why: main builds with sourcemap:'hidden' so release CI can publish maps
     // for decoding minified crash traces. The app never loads them (no
@@ -344,6 +350,12 @@ module.exports = {
   // electron-builder calls this with the context alone. The second parameter is the bundle root,
   // so a test can point the guard at a scratch bundle instead of needing the repo's out/ built.
   beforePack: (context, mobileWebBundleDir = MOBILE_WEB_BUNDLE_DIR) => {
+    if (isMacLocalMk) {
+      verifyBuildPair(
+        join(context.packager.projectDir, 'out'),
+        sourceIdentity(context.packager.projectDir)
+      )
+    }
     assertPackagedNativeVariantsInstalled(context.electronPlatformName, context.arch)
     assertBundledRipgrepInstalled()
     assertOrcadTemplateBuilt()
@@ -453,6 +465,13 @@ module.exports = {
         signMacStandaloneHelper(path, 'orcad template binary', context.packager)
     })
     chmodUnixCliLaunchers(resourcesDir, context.electronPlatformName)
+    if (isMacLocalMk) {
+      verifyPackagedCli(
+        resourcesDir,
+        sourceIdentity(context.packager.projectDir),
+        context.electronPlatformName
+      )
+    }
     for (const filename of readdirSync(resourcesDir)) {
       if (!filename.startsWith('agent-browser-')) {
         continue

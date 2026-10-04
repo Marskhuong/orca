@@ -39,6 +39,7 @@ export const ROOT_HELP_TEXT_PRIMARY = [
   '  environment rm            Remove a saved remote Orca runtime',
   '',
   'Environment Recipes:',
+  '  doctor                    Check CLI/runtime build compatibility',
   '  vm recipe doctor          Validate a per-workspace environment recipe',
   '',
   'Automations:',

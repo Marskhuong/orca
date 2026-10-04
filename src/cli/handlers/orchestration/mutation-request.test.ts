@@ -4,7 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY } from '../../../shared/protocol-version'
+import {
+  RUNTIME_PROTOCOL_VERSION,
+  MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
+  ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY
+} from '../../../shared/protocol-version'
 import { RuntimeClient, RuntimeClientError } from '../../runtime-client'
 import { callOrchestrationMutation } from './mutation-request'
 
@@ -202,7 +206,11 @@ describe('callOrchestrationMutation runtime_unavailable retry', () => {
               ok: true,
               result:
                 request.method === 'status.get'
-                  ? { capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY] }
+                  ? {
+                      runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,
+                      minCompatibleRuntimeClientVersion: MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
+                      capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY]
+                    }
                   : { message: { id: 'msg_1' } },
               _meta: { runtimeId: 'runtime-1' }
             })}\n`

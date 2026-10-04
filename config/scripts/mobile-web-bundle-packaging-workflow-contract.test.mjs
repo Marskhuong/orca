@@ -31,6 +31,11 @@ const packageScripts = JSON.parse(
   readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8')
 ).scripts
 
+const localMacBuild = readFileSync(
+  fileURLToPath(new URL('./build-mac-local.mjs', import.meta.url)),
+  'utf8'
+)
+
 const SCRIPT_INVOCATION = /pnpm (?:run )?([\w:-]+)(?=$|[\s'"&|;])/g
 
 /** Whether `pnpm run <name>` eventually runs build:mobile-web. */
@@ -45,6 +50,10 @@ function reachesBundleBuild(name, seen = new Set()) {
   const body = packageScripts[name]
   if (typeof body !== 'string') {
     return false
+  }
+  if (body.includes('node config/scripts/build-mac-local.mjs')) {
+    expect(localMacBuild).toContain("['run', 'build:desktop']")
+    return reachesBundleBuild('build:desktop', seen)
   }
   return [...body.matchAll(SCRIPT_INVOCATION)].some((match) => reachesBundleBuild(match[1], seen))
 }

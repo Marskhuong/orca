@@ -1,3 +1,4 @@
+import type { OrcaBuildIdentity } from './orca-build-identity'
 import type { AgentStatusOrchestrationContext } from './agent-status-types'
 import type { RemoteServerUpdateSupport } from './remote-server-update'
 import type { RemoteRuntimeSharedConnectionDiagnostics } from './remote-runtime-shared-control-types'
@@ -63,6 +64,7 @@ export function browserUnavailableMessage(
 }
 
 export type RuntimeStatus = {
+  buildIdentity?: OrcaBuildIdentity
   runtimeId: string
   /** Authenticated requester identity. Missing for in-process callers and older hosts. */
   pairedDeviceId?: string

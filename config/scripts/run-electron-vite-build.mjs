@@ -6,6 +6,8 @@ import { appendBuildOldSpaceOption } from './node-old-space-limit.mjs'
 import { RENDERER_BUILD_DIR, verifyRendererBootGraph } from './renderer-boot-graph.mjs'
 
 const require = createRequire(import.meta.url)
+const { sourceIdentity, recordArtifactBuild } = require('./bundled-cli-build-identity.cjs')
+const buildIdentity = sourceIdentity()
 const electronVitePackageJson = require.resolve('electron-vite/package.json')
 const electronViteCli = path.join(path.dirname(electronVitePackageJson), 'bin', 'electron-vite.js')
 
@@ -29,6 +31,15 @@ child.on('exit', (code, signal) => {
 
   if (code !== 0) {
     process.exit(code ?? 1)
+  }
+
+  const targetKind = process.env.ORCA_ELECTRON_VITE_TARGET
+  if (!targetKind || targetKind === 'main') {
+    if (sourceIdentity().sourceFingerprint !== buildIdentity.sourceFingerprint) {
+      console.error('Source changed during runtime build; rebuild CLI and runtime.')
+      process.exit(1)
+    }
+    recordArtifactBuild('main', process.cwd(), buildIdentity)
   }
 
   // Why here: this is the only place a real renderer bundle exists, and the

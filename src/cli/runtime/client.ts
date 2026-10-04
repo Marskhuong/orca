@@ -1,3 +1,5 @@
+import { checkOrchestrationContractCompatibility } from './orchestration-contract-compatibility'
+import { ensureCliRuntimeBuildCompatible } from './cli-runtime-build-compatibility'
 import { randomUUID } from 'node:crypto'
 import { ensureRunCapacityCompatible } from './run-capacity-compatibility'
 import type { CliStatusResult, RuntimeStatus } from '../../shared/runtime-types'
@@ -6,8 +8,7 @@ import type { RuntimeOrchestrationEnvelope } from '../../shared/runtime-rpc-enve
 import {
   isDurableMutation,
   isOrchestrationMutation,
-  isTerminalPromptMutation,
-  orchestrationMigrationData
+  isTerminalPromptMutation
 } from '../../shared/orchestration-rpc-contract'
 import type { PairingOffer } from '../../shared/pairing'
 import { launchOrcaApp } from './launch'
@@ -23,10 +24,7 @@ import {
 } from './terminal-prompt-mutation-recovery'
 import { markEnvironmentUsed } from './environments'
 import { resolveRemotePairing } from './runtime-remote-pairing'
-import {
-  ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
-  ORCHESTRATION_CONTRACT_VERSION
-} from '../../shared/protocol-version'
+import { ORCHESTRATION_CONTRACT_VERSION } from '../../shared/protocol-version'
 import { RemoteRuntimeCompatGate } from './remote-runtime-compat-gate'
 import { createOrchestrationCompatibilityEnvelope } from './orchestration-compatibility-envelope'
 import { getTimeoutMsParam, isWaitingCheck } from './runtime-request-timeout'
@@ -102,13 +100,18 @@ export class RuntimeClient {
     } & RuntimeOrchestrationEnvelope
   ): Promise<RuntimeRpcSuccess<TResult>> {
     const effectiveTimeoutMs = options?.timeoutMs ?? this.resolveMethodTimeoutMs(method, params)
-    await ensureRunCapacityCompatible(this, method, effectiveTimeoutMs)
+    const governed =
+      isOrchestrationMutation(method, params) ||
+      AGENT_LAUNCH_METHODS_WITH_CALLER_EVIDENCE.has(method) ||
+      method === 'orchestration.runCapacityShow'
+    const verifiedStatus = governed ? await ensureCliRuntimeBuildCompatible(this) : undefined
+    await ensureRunCapacityCompatible(this, method, effectiveTimeoutMs, verifiedStatus?.result)
     const orchestrationMutation = isOrchestrationMutation(method, params)
     const terminalPromptMutation = isTerminalPromptMutation(method, params)
     const legacyTerminalPrompt = options?.legacyTerminalPrompt === true && terminalPromptMutation
     const durableMutation = !legacyTerminalPrompt && isDurableMutation(method, params)
     if (orchestrationMutation) {
-      await this.ensureOrchestrationContractCompatible(effectiveTimeoutMs)
+      await this.ensureOrchestrationContractCompatible(effectiveTimeoutMs, verifiedStatus)
     }
     const orchestrationRequestId = durableMutation
       ? (options?.orchestrationRequestId ?? randomUUID())
@@ -255,10 +258,16 @@ export class RuntimeClient {
     return getCliStatus(this.userDataPath)
   }
 
-  private async ensureOrchestrationContractCompatible(timeoutMs: number): Promise<void> {
+  private async ensureOrchestrationContractCompatible(
+    timeoutMs: number,
+    verifiedStatus?: RuntimeRpcSuccess<RuntimeStatus>
+  ): Promise<void> {
     if (!this.orchestrationContractCheck) {
-      this.orchestrationContractCheck = this.checkOrchestrationContractCompatibility(
-        timeoutMs
+      this.orchestrationContractCheck = checkOrchestrationContractCompatibility(
+        this,
+        timeoutMs,
+        verifiedStatus,
+        this.remotePairing ? this.remoteCompat : undefined
       ).catch((error: unknown) => {
         // Why: a failed probe must not be cached, or a retry after a brief outage never reaches the app.
         this.orchestrationContractCheck = null
@@ -266,20 +275,6 @@ export class RuntimeClient {
       })
     }
     await this.orchestrationContractCheck
-  }
-
-  private async checkOrchestrationContractCompatibility(timeoutMs: number): Promise<void> {
-    const response = await this.call<RuntimeStatus>('status.get', undefined, { timeoutMs })
-    if (this.remotePairing) {
-      this.remoteCompat.noteVerifiedStatus(response.result)
-    }
-    if (!response.result.capabilities?.includes(ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY)) {
-      throw new RuntimeClientError(
-        'orchestration_migration_required',
-        'The connected Orca runtime does not support the current orchestration contract. No effects were applied.',
-        orchestrationMigrationData('runtime_capability_missing')
-      )
-    }
   }
 
   async openOrca(timeoutMs = 15_000): Promise<RuntimeRpcSuccess<CliStatusResult>> {

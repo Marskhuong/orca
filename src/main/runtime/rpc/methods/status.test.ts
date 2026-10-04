@@ -1,3 +1,9 @@
+import type { OrcaBuildIdentity } from '../../../../shared/orca-build-identity'
+import {
+  RUNTIME_PROTOCOL_VERSION,
+  MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
+  MIN_COMPATIBLE_RUNTIME_SERVER_VERSION
+} from '../../../../shared/protocol-version'
 import os from 'node:os'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { normalizeMachineName } from '../../../../shared/machine-name'
@@ -7,6 +13,10 @@ import { STATUS_METHODS } from './status'
 
 // Why mocked: the friendly-name lookup is the one path that spawns `scutil`; the test decides when it lands.
 const runProcessMock = vi.hoisted(() => vi.fn())
+const readIdentityMock = vi.hoisted(() => vi.fn<() => OrcaBuildIdentity | null>(() => null))
+vi.mock('../../../../shared/orca-build-identity', () => ({
+  readRuntimeBuildIdentity: readIdentityMock
+}))
 vi.mock('../../../../shared/child-process/run-process', () => ({ runProcess: runProcessMock }))
 
 vi.mock('electron', () => ({
@@ -49,5 +59,19 @@ describe('status.get', () => {
     })
 
     await expect(pending).resolves.toMatchObject({ machineName: 'Friendly Name' })
+    expect(runtime.getStatus()).not.toHaveProperty('buildIdentity')
+    const identity: OrcaBuildIdentity = {
+      distribution: 'orca-mk',
+      version: '1',
+      commit: 'abc',
+      sourceFingerprint: 'def',
+      runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,
+      minCompatibleRuntimeClientVersion: MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
+      minCompatibleRuntimeServerVersion: MIN_COMPATIBLE_RUNTIME_SERVER_VERSION
+    }
+    readIdentityMock.mockReturnValueOnce(identity)
+    const unchanged = await STATUS_METHODS[0].handler(undefined, { runtime })
+    expect(unchanged).not.toHaveProperty('buildIdentity')
+    expect(readIdentityMock).toHaveBeenCalledTimes(1)
   })
 })

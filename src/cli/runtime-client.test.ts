@@ -3,7 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createServer, type Socket } from 'node:net'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY } from '../shared/protocol-version'
+import {
+  RUNTIME_PROTOCOL_VERSION,
+  MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION,
+  ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY
+} from '../shared/protocol-version'
 import { RuntimeClient, RuntimeClientError, RuntimeRpcFailureError } from './runtime-client'
 import { launchOrcaApp } from './runtime/launch'
 
@@ -11,6 +15,10 @@ vi.mock('./runtime/launch', () => ({
   launchOrcaApp: vi.fn()
 }))
 
+const supportedProtocol = {
+  runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,
+  minCompatibleRuntimeClientVersion: MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION
+}
 const servers = new Set<ReturnType<typeof createServer>>()
 const sockets = new Set<Socket>()
 
@@ -87,7 +95,7 @@ describe.skipIf(process.platform === 'win32')('RuntimeClient', () => {
         requests.push(request)
         const result =
           request.method === 'status.get'
-            ? { capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY] }
+            ? { ...supportedProtocol, capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY] }
             : {}
         socket.write(
           `${JSON.stringify({
@@ -150,7 +158,7 @@ describe.skipIf(process.platform === 'win32')('RuntimeClient', () => {
         const request = JSON.parse(String(data).trim()) as Record<string, unknown>
         requests.push(request)
         socket.write(
-          `${JSON.stringify({ id: request.id, ok: true, result: {}, _meta: { runtimeId: 'runtime-1' } })}\n`
+          `${JSON.stringify({ id: request.id, ok: true, result: request.method === 'status.get' ? supportedProtocol : {}, _meta: { runtimeId: 'runtime-1' } })}\n`
         )
       })
     })
@@ -200,7 +208,7 @@ describe.skipIf(process.platform === 'win32')('RuntimeClient', () => {
           `${JSON.stringify({
             id: request.id,
             ok: true,
-            result: { capabilities: [] },
+            result: { ...supportedProtocol, capabilities: [] },
             _meta: { runtimeId: 'runtime-1' }
           })}\n`
         )

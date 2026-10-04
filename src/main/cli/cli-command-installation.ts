@@ -1,4 +1,5 @@
-import { link, readlink, rmdir, symlink, unlink, writeFile } from 'node:fs/promises'
+import { ensureMkCliSelectorLauncher } from './mk-cli-selector-launcher'
+import { link, symlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import type { CliInstallStatus } from '../../shared/cli-install-types'
 import {
@@ -10,11 +11,10 @@ import { CliCommandInspection } from './cli-command-inspection'
 import {
   buildMacPrivilegedSymlinkTransaction,
   capturedExpectedEntry,
-  hasSameIdentity,
-  hasSameSnapshot,
   inspectStableCommand,
   quarantineCommandPath,
-  readEntrySnapshot,
+  restoreQuarantinedCommand,
+  discardQuarantinedCommand,
   type CommandQuarantine,
   type StableCommandInspection
 } from './cli-command-filesystem-transaction'
@@ -41,6 +41,9 @@ export class CliCommandInstallation extends CliCommandInspection {
       return
     }
 
+    const publishTarget = this.isMkMac
+      ? await ensureMkCliSelectorLauncher(this.homePath, launcherPath)
+      : launcherPath
     let quarantine: CommandQuarantine
     try {
       quarantine = await this.quarantineCommandPath(commandPath)
@@ -48,7 +51,7 @@ export class CliCommandInstallation extends CliCommandInspection {
       if (this.platform !== 'darwin' || !isPermissionError(error)) {
         throw error
       }
-      await this.installSymlinkWithPrivileges(commandPath, launcherPath, inspected)
+      await this.installSymlinkWithPrivileges(commandPath, launcherPath, inspected, publishTarget)
       return
     }
 
@@ -60,7 +63,7 @@ export class CliCommandInstallation extends CliCommandInspection {
     }
 
     try {
-      await symlink(launcherPath, commandPath)
+      await symlink(publishTarget, commandPath)
     } catch (error) {
       await this.restoreQuarantinedCommand(quarantine, commandPath)
       throw error
@@ -221,72 +224,29 @@ export class CliCommandInstallation extends CliCommandInspection {
     quarantine: CommandQuarantine,
     commandPath: string
   ): Promise<void> {
-    if (!quarantine.snapshot) {
-      await rmdir(quarantine.directoryPath)
-      return
-    }
-    await this.assertHeldIdentity(quarantine)
-    try {
-      await (quarantine.snapshot.isSymbolicLink
-        ? symlink(await readlink(quarantine.heldPath), commandPath)
-        : this.linkQuarantinedCommand(quarantine.heldPath, commandPath))
-      const restored = await readEntrySnapshot(commandPath)
-      const restoredSymlink =
-        restored?.isSymbolicLink && quarantine.snapshot.isSymbolicLink
-          ? (await readlink(commandPath)) === (await readlink(quarantine.heldPath))
-          : false
-      if (
-        !restored ||
-        (!restoredSymlink && !hasSameIdentity(restored.identity, quarantine.snapshot.identity))
-      ) {
-        throw new Error('The restored command identity could not be verified.')
-      }
-      await this.discardQuarantinedCommand(quarantine, quarantine.snapshot.isSymbolicLink)
-    } catch (error) {
-      throw new Error(
-        `The displaced entry is preserved at ${quarantine.heldPath}; ${commandPath} could not be restored without overwriting another entry.`,
-        { cause: error }
-      )
-    }
+    await restoreQuarantinedCommand(quarantine, commandPath, (heldPath, destination) =>
+      this.linkQuarantinedCommand(heldPath, destination)
+    )
   }
 
   private async discardQuarantinedCommand(
     quarantine: CommandQuarantine,
     requireStableMetadata = true
   ): Promise<void> {
-    if (quarantine.snapshot) {
-      await this.assertHeldIdentity(quarantine, requireStableMetadata)
-      await unlink(quarantine.heldPath)
-    }
-    await rmdir(quarantine.directoryPath)
-  }
-
-  private async assertHeldIdentity(
-    quarantine: CommandQuarantine,
-    requireStableMetadata = true
-  ): Promise<void> {
-    const current = await readEntrySnapshot(quarantine.heldPath)
-    if (
-      !current ||
-      !quarantine.snapshot ||
-      !(requireStableMetadata
-        ? hasSameSnapshot(current, quarantine.snapshot)
-        : hasSameIdentity(current.identity, quarantine.snapshot.identity))
-    ) {
-      throw new Error(`The quarantined command changed at ${quarantine.heldPath}.`)
-    }
+    await discardQuarantinedCommand(quarantine, requireStableMetadata)
   }
 
   private async installSymlinkWithPrivileges(
     commandPath: string,
     launcherPath: string,
-    inspected: StableCommandInspection
+    inspected: StableCommandInspection,
+    publishTarget = launcherPath
   ): Promise<void> {
     await this.privilegedRunner(
       buildMacPrivilegedSymlinkTransaction({
         action: 'install',
         commandPath,
-        launcherPath,
+        launcherPath: publishTarget,
         expected: inspected.snapshot?.identity ?? null,
         expectedFileSha256: inspected.fileSha256,
         expectedRawSymlinkTarget: inspected.rawSymlinkTarget

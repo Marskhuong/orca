@@ -94,6 +94,15 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     `[build:mac] local signing identity ${signingName} (${env.ORCA_MAC_LOCAL_SIGN_IDENTITY})`
   )
   console.log(`[build:mac] local update version ${identity.version}`)
+  execFileSync(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', ['run', 'build:desktop'], {
+    env,
+    stdio: 'inherit'
+  })
+  execFileSync(
+    process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
+    ['run', 'ensure:electron-runtime'],
+    { env, stdio: 'inherit' }
+  )
   for (const [script, ...args] of [
     ['build-computer-macos.mjs'],
     ['build-keyboard-layout-macos.mjs'],

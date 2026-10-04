@@ -1,3 +1,4 @@
+import { readOrcaBuildIdentity } from '../../shared/orca-build-identity'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
@@ -39,6 +40,7 @@ export abstract class CliInstallLocation {
 
   protected readonly platform: NodeJS.Platform
   protected readonly isPackaged: boolean
+  protected readonly isMkMac: boolean
   protected readonly userDataPath: string
   protected readonly resourcesPath: string
   protected readonly execPathValue: string
@@ -73,6 +75,10 @@ export abstract class CliInstallLocation {
     this.isPackaged = options.isPackaged ?? getAppEnvironment().isPackaged()
     this.userDataPath = options.userDataPath ?? getAppEnvironment().getPath('userData')
     this.resourcesPath = options.resourcesPath ?? process.resourcesPath
+    this.isMkMac =
+      this.isPackaged &&
+      this.platform === 'darwin' &&
+      readOrcaBuildIdentity({ resourcesPath: this.resourcesPath })?.distribution === 'orca-mk'
     this.execPathValue = options.execPath ?? process.execPath
     this.appPathValue = options.appPath ?? getAppEnvironment().getAppPath()
     this.homePath = options.homePath ?? homedir()
@@ -147,6 +153,7 @@ export abstract class CliInstallLocation {
     launcherPath: string
   ): Promise<InstallSpec> {
     if (
+      this.isMkMac ||
       this.commandPathOverride ||
       this.platform !== 'darwin' ||
       defaultSpec.installMethod !== 'symlink'
@@ -201,6 +208,9 @@ export abstract class CliInstallLocation {
   }
 
   protected resolveCommandPath(): string | null {
+    if (this.isMkMac) {
+      return join(this.homePath, '.local', 'bin', 'orca')
+    }
     if (this.commandPathOverride) {
       return this.commandPathOverride
     }

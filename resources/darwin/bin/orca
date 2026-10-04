@@ -24,6 +24,7 @@ ELECTRON="$CONTENTS/MacOS/Orca"
 # command can execute it directly with ELECTRON_RUN_AS_NODE, mirroring VS Code's
 # launcher model instead of requiring a separate npm-distributed binary.
 CLI="$CONTENTS/Resources/app.asar.unpacked/out/cli/index.js"
+export ORCA_CLI_COMMAND="$CONTENTS/Resources/bin/orca"
 
 export ORCA_NODE_OPTIONS="${NODE_OPTIONS-}"
 export ORCA_NODE_REPL_EXTERNAL_MODULE="${NODE_REPL_EXTERNAL_MODULE-}"

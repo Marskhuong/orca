@@ -1,9 +1,19 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { lstat, mkdir, readFile, readlink, rename, rmdir } from 'node:fs/promises'
+import {
+  link,
+  lstat,
+  mkdir,
+  readFile,
+  readlink,
+  rename,
+  rmdir,
+  symlink,
+  unlink
+} from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import type { CliInstallStatus } from '../../shared/cli-install-types'
 import { isMissingError } from './cli-install-errors'
-import { quoteShell } from './cli-install-path-format'
+import { quoteShell } from '../../shared/shell-quote'
 
 export type EntryIdentity = {
   dev: bigint
@@ -206,4 +216,65 @@ export function buildMacPrivilegedSymlinkTransaction(
     `if [ "$captured" -eq 1 ]; then /bin/rm ${quoteShell(heldPath)}; fi; ` +
     `/bin/rmdir ${quoteShell(transactionDirectory)}; else ${rollback}; fi`
   )
+}
+
+export async function restoreQuarantinedCommand(
+  quarantine: CommandQuarantine,
+  commandPath: string,
+  linkQuarantinedCommand: (heldPath: string, commandPath: string) => Promise<void> = link
+): Promise<void> {
+  if (!quarantine.snapshot) {
+    await rmdir(quarantine.directoryPath)
+    return
+  }
+  await assertHeldIdentity(quarantine)
+  try {
+    await (quarantine.snapshot.isSymbolicLink
+      ? symlink(await readlink(quarantine.heldPath), commandPath)
+      : linkQuarantinedCommand(quarantine.heldPath, commandPath))
+    const restored = await readEntrySnapshot(commandPath)
+    const restoredSymlink =
+      restored?.isSymbolicLink && quarantine.snapshot.isSymbolicLink
+        ? (await readlink(commandPath)) === (await readlink(quarantine.heldPath))
+        : false
+    if (
+      !restored ||
+      (!restoredSymlink && !hasSameIdentity(restored.identity, quarantine.snapshot.identity))
+    ) {
+      throw new Error('The restored command identity could not be verified.')
+    }
+    await discardQuarantinedCommand(quarantine, quarantine.snapshot.isSymbolicLink)
+  } catch (error) {
+    throw new Error(
+      `The displaced entry is preserved at ${quarantine.heldPath}; ${commandPath} could not be restored without overwriting another entry.`,
+      { cause: error }
+    )
+  }
+}
+
+export async function discardQuarantinedCommand(
+  quarantine: CommandQuarantine,
+  requireStableMetadata = true
+): Promise<void> {
+  if (quarantine.snapshot) {
+    await assertHeldIdentity(quarantine, requireStableMetadata)
+    await unlink(quarantine.heldPath)
+  }
+  await rmdir(quarantine.directoryPath)
+}
+
+async function assertHeldIdentity(
+  quarantine: CommandQuarantine,
+  requireStableMetadata = true
+): Promise<void> {
+  const current = await readEntrySnapshot(quarantine.heldPath)
+  if (
+    !current ||
+    !quarantine.snapshot ||
+    !(requireStableMetadata
+      ? hasSameSnapshot(current, quarantine.snapshot)
+      : hasSameIdentity(current.identity, quarantine.snapshot.identity))
+  ) {
+    throw new Error(`The quarantined command changed at ${quarantine.heldPath}.`)
+  }
 }

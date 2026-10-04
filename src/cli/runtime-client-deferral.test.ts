@@ -56,6 +56,8 @@ vi.mock('./runtime-client', () => {
   return { RuntimeClient, getDefaultUserDataPath: () => testUserDataPathRef.current }
 })
 
+vi.mock('./cli-version', () => ({ readOrcaCliVersion: () => '1.0.0-test' }))
+
 import { main } from './index'
 import * as dispatchModule from './dispatch'
 
@@ -84,6 +86,15 @@ describe('RuntimeClient module-graph deferral', () => {
   it('constructs no client for --help', async () => {
     await main(['--help'], '/tmp/repo')
     expect(constructorArgsMock).not.toHaveBeenCalled()
+  })
+
+  it('constructs no client for offline version and doctor help', async () => {
+    const write = vi.spyOn(process.stdout, 'write').mockReturnValue(true)
+    await main(['--version'], '/tmp/repo')
+    expect(write).toHaveBeenCalledWith('1.0.0-test\n')
+    await main(['doctor', '--help'], '/tmp/repo')
+    expect(constructorArgsMock).not.toHaveBeenCalled()
+    write.mockRestore()
   })
 
   it('constructs no client for an unknown flag', async () => {

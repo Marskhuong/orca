@@ -1,3 +1,4 @@
+import { RUNTIME_BUILD_IDENTITY } from './runtime-build-identity'
 import { OrcaRuntimeWithGetRuntimeId } from './orca-runtime-get-runtime-id'
 import type { RuntimeDegradation, RuntimeStatus } from '../../shared/runtime-types'
 import {
@@ -133,6 +134,7 @@ export class OrcaRuntimeWithGetStatus extends OrcaRuntimeWithGetRuntimeId {
       degradations.push(terminalDegradation)
     }
     return {
+      ...(RUNTIME_BUILD_IDENTITY ? { buildIdentity: RUNTIME_BUILD_IDENTITY } : {}),
       runtimeId: this.runtimeId,
       rendererGraphEpoch: this.rendererGraphEpoch,
       graphStatus: this.graphStatus,

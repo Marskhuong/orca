@@ -6,13 +6,16 @@ import { RuntimeClientError } from './types'
 export async function ensureRunCapacityCompatible(
   client: Pick<RuntimeClient, 'call'>,
   method: string,
-  timeoutMs: number
+  timeoutMs: number,
+  verifiedStatus?: RuntimeStatus
 ): Promise<void> {
   if (method !== 'orchestration.runCapacityRecord' && method !== 'orchestration.runCapacityShow') {
     return
   }
-  const status = await client.call<RuntimeStatus>('status.get', undefined, { timeoutMs })
-  if (!status.result.capabilities?.includes(RUN_CAPACITY_RUNTIME_CAPABILITY)) {
+  const status =
+    verifiedStatus ??
+    (await client.call<RuntimeStatus>('status.get', undefined, { timeoutMs })).result
+  if (!status.capabilities?.includes(RUN_CAPACITY_RUNTIME_CAPABILITY)) {
     throw new RuntimeClientError(
       'incompatible_runtime',
       `The connected Orca runtime must support ${RUN_CAPACITY_RUNTIME_CAPABILITY}. No effects were applied.`,
