@@ -104,7 +104,9 @@ export class RuntimeClient {
       isOrchestrationMutation(method, params) ||
       AGENT_LAUNCH_METHODS_WITH_CALLER_EVIDENCE.has(method) ||
       method === 'orchestration.runCapacityShow'
-    const verifiedStatus = governed ? await ensureCliRuntimeBuildCompatible(this) : undefined
+    const verifiedStatus = governed
+      ? await ensureCliRuntimeBuildCompatible(this, effectiveTimeoutMs)
+      : undefined
     await ensureRunCapacityCompatible(this, method, effectiveTimeoutMs, verifiedStatus?.result)
     const orchestrationMutation = isOrchestrationMutation(method, params)
     const terminalPromptMutation = isTerminalPromptMutation(method, params)

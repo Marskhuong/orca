@@ -146,4 +146,12 @@ describe('governed build preflight', () => {
     await client.call('status.get')
     expect(sendRequest).toHaveBeenCalledTimes(1)
   })
+  it('uses the governed call timeout for its compatibility preflight', async () => {
+    const client = setup()
+    await client.call('orchestration.runCapacityRecord', {}, { timeoutMs: 30000 })
+    expect(vi.mocked(sendRequest).mock.calls.map((call) => [call[1], call[3]])).toEqual([
+      ['status.get', 30000],
+      ['orchestration.runCapacityRecord', 30000]
+    ])
+  })
 })

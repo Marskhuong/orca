@@ -7,8 +7,23 @@ const IDENTITY_FILENAME = 'orca-build-identity.json'
 const PROVENANCE_FILENAME = 'orca-artifact-build.json'
 
 function sourceIdentity(projectDir = process.cwd(), env = process.env) {
-  const git = (args) => execFileSync('git', args, { cwd: projectDir, encoding: 'utf8' }).trim()
-  const commit = git(['rev-parse', 'HEAD'])
+  const git = (args) =>
+    execFileSync('git', args, {
+      cwd: projectDir,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: 'pipe'
+    }).trim()
+  const protocol = readFileSync(join(projectDir, 'src/shared/protocol-version.ts'), 'utf8')
+  let commit
+  try {
+    commit = git(['rev-parse', 'HEAD'])
+  } catch (error) {
+    if (env.ORCA_MAC_LOCAL_MK === '1') {
+      throw new Error('MK builds require Git source provenance', { cause: error })
+    }
+    commit = 'unknown'
+  }
   const hash = createHash('sha256').update(commit)
   const scopes = [
     'src',
@@ -21,14 +36,17 @@ function sourceIdentity(projectDir = process.cwd(), env = process.env) {
     'native',
     'patches'
   ]
-  hash.update(git(['diff', 'HEAD', '--binary', '--', ...scopes]))
-  for (const file of git(['ls-files', '--others', '--exclude-standard', '--', ...scopes])
-    .split('\n')
-    .filter(Boolean)
-    .sort()) {
-    hash.update(file).update(readFileSync(join(projectDir, file)))
+  if (commit !== 'unknown') {
+    hash.update(git(['diff', 'HEAD', '--binary', '--', ...scopes]))
+    for (const file of git(['ls-files', '--others', '--exclude-standard', '--', ...scopes])
+      .split('\n')
+      .filter(Boolean)
+      .sort()) {
+      hash.update(file).update(readFileSync(join(projectDir, file)))
+    }
+  } else {
+    hash.update(protocol).update(readFileSync(join(projectDir, 'package.json')))
   }
-  const protocol = readFileSync(join(projectDir, 'src/shared/protocol-version.ts'), 'utf8')
   const value = (name) => {
     const match = protocol.match(new RegExp(`export const ${name} = (\\d+)`))
     if (!match) {

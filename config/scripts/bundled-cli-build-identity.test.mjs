@@ -11,10 +11,11 @@ import {
   writeFileSync
 } from 'node:fs'
 import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-const { recordArtifactBuild, verifyBuildPair, verifyPackagedCli } = createRequire(import.meta.url)(
-  './bundled-cli-build-identity.cjs'
-)
+const { sourceIdentity, recordArtifactBuild, verifyBuildPair, verifyPackagedCli } = createRequire(
+  import.meta.url
+)('./bundled-cli-build-identity.cjs')
 const roots = []
 const identity = {
   distribution: 'orca-mk',
@@ -94,5 +95,42 @@ describe('MK bundled CLI build invariant', () => {
     expect(() =>
       verifyPackagedCli(resources, { ...identity, commit: 'different' }, 'darwin')
     ).toThrow('mismatch')
+  })
+  it('keeps ordinary archive builds working but requires Git provenance for MK', () => {
+    const root = fixture()
+    mkdirSync(join(root, 'src/shared'), { recursive: true })
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ version: '1.2.3' }))
+    writeFileSync(
+      join(root, 'src/shared/protocol-version.ts'),
+      'export const RUNTIME_PROTOCOL_VERSION = 3\nexport const MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION = 2\nexport const MIN_COMPATIBLE_RUNTIME_SERVER_VERSION = 2\n'
+    )
+    expect(sourceIdentity(root, {}).commit).toBe('unknown')
+    expect(() => sourceIdentity(root, { ORCA_MAC_LOCAL_MK: '1' })).toThrow('Git source provenance')
+  })
+  it('hashes source diffs larger than the Node default process buffer', () => {
+    const root = fixture()
+    mkdirSync(join(root, 'src/shared'), { recursive: true })
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ version: '1.2.3' }))
+    writeFileSync(
+      join(root, 'src/shared/protocol-version.ts'),
+      'export const RUNTIME_PROTOCOL_VERSION = 3\nexport const MIN_COMPATIBLE_RUNTIME_CLIENT_VERSION = 2\nexport const MIN_COMPATIBLE_RUNTIME_SERVER_VERSION = 2\n'
+    )
+    const git = (args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' })
+    git(['init', '-q'])
+    git(['add', 'src', 'package.json'])
+    git([
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'initial'
+    ])
+    const before = sourceIdentity(root, { ORCA_MAC_LOCAL_MK: '1' })
+    writeFileSync(join(root, 'src/large.ts'), 'x'.repeat(2 * 1024 * 1024))
+    git(['add', 'src/large.ts'])
+    const after = sourceIdentity(root, { ORCA_MAC_LOCAL_MK: '1' })
+    expect(after.sourceFingerprint).not.toBe(before.sourceFingerprint)
   })
 })

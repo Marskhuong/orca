@@ -68,7 +68,8 @@ function mismatch(message: string): CliRuntimeCompatibility {
 }
 
 export async function ensureCliRuntimeBuildCompatible(
-  client: Pick<RuntimeClient, 'call'>
+  client: Pick<RuntimeClient, 'call'>,
+  timeoutMs: number
 ): Promise<RuntimeRpcSuccess<RuntimeStatus>> {
   let identity: OrcaBuildIdentity | null
   try {
@@ -83,7 +84,7 @@ export async function ensureCliRuntimeBuildCompatible(
       }
     )
   }
-  const response = await client.call<RuntimeStatus>('status.get', undefined, { timeoutMs: 1000 })
+  const response = await client.call<RuntimeStatus>('status.get', undefined, { timeoutMs })
   const compatibility = evaluateCliRuntimeBuildCompatibility(identity, response.result)
   if (compatibility.status === 'FAIL') {
     throw new RuntimeClientError('CLI_RUNTIME_MISMATCH', compatibility.message, {
