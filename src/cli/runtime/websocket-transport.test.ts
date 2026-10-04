@@ -18,6 +18,7 @@ import { launchOrcaApp } from './launch'
 import { addEnvironmentFromPairingCode } from './environments'
 import { RuntimeClientError } from './types'
 import {
+  ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
   AGENT_SESSION_BACKGROUND_TASK_ROW_STOP_CAPABILITY,
   AGENT_SESSION_TURN_ITEM_CAPABILITY,
   AGENT_SESSION_BACKGROUND_TASK_STOP_CAPABILITY,
@@ -228,6 +229,35 @@ describe('CLI remote WebSocket transport', () => {
     expect(runtime.authFrames).toHaveLength(1)
     expect(runtime.requestMethods).toEqual(['status.get', 'repo.list'])
   })
+
+  it.each(['orchestration.runCapacityRecord', 'orchestration.runCapacityShow'])(
+    'refuses %s before sending it to a runtime without capacity support',
+    async (method) => {
+      const runtime = await startTestRuntime('runtime-without-capacity', {
+        capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY]
+      })
+      servers.push(runtime)
+      const client = new RuntimeClient(
+        '/tmp/unused',
+        5_000,
+        encodePairingOffer({
+          v: 2,
+          endpoint: runtime.endpoint,
+          deviceToken: runtime.deviceToken,
+          publicKeyB64: runtime.publicKeyB64
+        })
+      )
+      await expect(client.call(method, { id: 'run_test' })).rejects.toMatchObject({
+        code: 'incompatible_runtime',
+        data: {
+          capability: 'orchestration.run-capacity.v1',
+          effectsApplied: false,
+          workerCreated: false
+        }
+      })
+      expect(runtime.requestMethods).toEqual(['status.get'])
+    }
+  )
 
   it('blocks orchestration mutations when a remote runtime lacks the contract capability', async () => {
     const runtime = await startTestRuntime('runtime-old-orchestration', { capabilities: [] })

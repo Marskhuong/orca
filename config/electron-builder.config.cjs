@@ -36,6 +36,7 @@ const {
   orcadTemplateMacSignIgnore
 } = require('./scripts/packaged-orcad-template.cjs')
 const { verifySkillsCliRuntime } = require('./scripts/verify-skills-cli-runtime.cjs')
+const { verifyCapacityCliRegistration } = require('./scripts/verify-capacity-cli-registration.cjs')
 const { verifyStaticAppImagePackage } = require('./scripts/static-appimage-package-contract.cjs')
 const { signWindowsUninstallerViaSignPath } = require('./scripts/windows-uninstaller-signing.cjs')
 
@@ -400,6 +401,9 @@ module.exports = {
     verifySkillsCliRuntime(join(resourcesDir, 'app.asar.unpacked', 'out'), resourcesDir, {
       executeCommands: canExecuteTargetArch
     })
+    if (canExecuteTargetArch) {
+      verifyCapacityCliRegistration(join(resourcesDir, 'app.asar.unpacked', 'out'))
+    }
     if (!canExecuteTargetArch) {
       console.log(
         `[verify-skills-cli-runtime] skipped command probes on cross-arch slice (target ${context.arch}, host ${process.arch})`

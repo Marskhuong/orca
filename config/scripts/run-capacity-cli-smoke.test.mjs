@@ -100,10 +100,58 @@ it('source CLI registers UNKNOWN evidence and unlocks dispatch only after the ha
     ok: true,
     result: { recorded: true, ...evidence }
   })
+  expect(h.runtime.createTerminal).not.toHaveBeenCalled()
+  expect(h.runtime.sendTerminalAgentPrompt).not.toHaveBeenCalled()
+  expect(h.db.listTasks({ runId: h.activeRunId })).toEqual([])
   expect(await invoke('worker-start', workerArgs)).toMatchObject({
     ok: true,
     result: { state: 'ready', dispatchId: expect.any(String) }
   })
   expect(process.exitCode).toBe(0)
   expect(h.runtime.createTerminal).toHaveBeenCalledTimes(1)
+})
+
+it.each(['run-capacity-record', 'run-capacity-show'])(
+  'rejects a missing Run through %s',
+  async (command) => {
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {})
+    await main(
+      [
+        'orchestration',
+        command,
+        '--id',
+        'run_missing',
+        ...(command === 'run-capacity-record'
+          ? ['--from', 'term_coord', '--evidence', JSON.stringify(capacityEvidence())]
+          : []),
+        '--json'
+      ],
+      tmpdir()
+    )
+    expect(JSON.parse(output.mock.calls[0][0])).toMatchObject({ ok: false })
+    expect(process.exitCode).toBe(1)
+    expect(h.runtime.createTerminal).not.toHaveBeenCalled()
+  }
+)
+
+it('propagates coordinator refusal without recording evidence', async () => {
+  const output = vi.spyOn(console, 'log').mockImplementation(() => {})
+  await main(
+    [
+      'orchestration',
+      'run-capacity-record',
+      '--id',
+      h.activeRunId,
+      '--from',
+      'term_worker',
+      '--evidence',
+      JSON.stringify(capacityEvidence()),
+      '--json'
+    ],
+    tmpdir()
+  )
+  expect(JSON.parse(output.mock.calls[0][0])).toMatchObject({ ok: false })
+  expect(process.exitCode).toBe(1)
+  expect(h.db.db.prepare('SELECT * FROM run_capacity_handshakes').all()).toEqual([])
+  expect(h.runtime.createTerminal).not.toHaveBeenCalled()
 })
