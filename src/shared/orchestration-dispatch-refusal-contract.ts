@@ -37,7 +37,7 @@ const ROUTE_REFUSAL_MESSAGES: Record<RouteDispatchRefusalCode, string> = {
   ROUTE_RETIRED_BY_POLICY: 'is retired by Product Owner policy and is never dispatchable',
   ROUTE_CAPACITY_NOT_AUTHORIZED: 'is not capacity-authorized by the Run routing posture',
   ROUTE_NOT_READY: 'is not recorded READY in the Run routing posture',
-  ROUTE_IDENTITY_REQUIRED: 'must name its route because the Run routing posture records readiness'
+  ROUTE_IDENTITY_REQUIRED: 'must name a route recorded in the Run routing posture'
 }
 
 const ROUTE_REFUSAL_NEXT_STEPS: Record<RouteDispatchRefusalCode, string> = {

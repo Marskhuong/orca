@@ -91,7 +91,15 @@ export function createOrchestrationWorkerReleaseHarness(): OrchestrationWorkerRe
     )
     vi.spyOn(runtime, 'validateOrchestrationAgentLauncher').mockImplementation(() => {})
     vi.spyOn(runtime, 'showTerminal').mockImplementation(
-      async (handle) => ({ handle, worktreeId: 'repo::worktree', status: 'running' }) as never
+      async (handle) =>
+        // Fixture terminals run the codex fixture agent; the route check reads its identity.
+        // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
+        ({
+          handle,
+          worktreeId: 'repo::worktree',
+          status: 'running',
+          agentIdentity: 'codex'
+        }) as never
     )
     vi.spyOn(runtime, 'showManagedTerminalWorkspace').mockResolvedValue({
       id: 'repo::worktree'

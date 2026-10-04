@@ -153,7 +153,11 @@ describe('orchestration dispatch failure codes through RpcDispatcher', () => {
       return handle === COORDINATOR_HANDLE ? COORDINATOR_PANE : null
     })
 
-    const response = await dispatch(harness, { task: task.id, to: WORKER_HANDLE })
+    const response = await dispatch(harness, {
+      task: task.id,
+      to: WORKER_HANDLE,
+      route: 'requested-route'
+    })
 
     expect(expectFailure(response).error).toEqual(
       taskNotStartableRefusal(`Task ${task.id} is failed; only ready tasks can be dispatched`, {
@@ -217,7 +221,10 @@ function createHarness(): Harness {
 function mockWorkerStartTopology(runtime: OrcaRuntimeService): void {
   vi.spyOn(runtime, 'validateOrchestrationAgentLauncher').mockImplementation(() => {})
   vi.spyOn(runtime, 'showTerminal').mockImplementation(
-    async (handle) => ({ handle, worktreeId: 'repo::worktree', status: 'running' }) as never
+    async (handle) =>
+      // Fixture terminals run the codex fixture agent; the route check reads its identity.
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
+      ({ handle, worktreeId: 'repo::worktree', status: 'running', agentIdentity: 'codex' }) as never
   )
   vi.spyOn(runtime, 'showManagedTerminalWorkspace').mockResolvedValue({
     id: 'repo::worktree'

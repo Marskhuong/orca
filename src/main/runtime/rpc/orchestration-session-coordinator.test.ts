@@ -66,7 +66,8 @@ describe('a structured chat coordinates through the same verbs as a terminal', (
 
     const { dispatch } = await as(SESSION_X, 'orchestration.dispatch', {
       task: taskId,
-      to: WORKER_HANDLE
+      to: WORKER_HANDLE,
+      route: 'requested-route'
     })
     expect(dispatch).toMatchObject({
       assignee_handle: WORKER_HANDLE,
@@ -184,7 +185,11 @@ describe('a structured chat coordinates through the same verbs as a terminal', (
   it("lets its worker ask it at its session address, the one the worker's preamble names", async () => {
     const runId = await runCreate(SESSION_X)
     const taskId = idOf((await as(SESSION_X, 'orchestration.taskCreate', { spec: 'q' })).task)
-    await as(SESSION_X, 'orchestration.dispatch', { task: taskId, to: WORKER_HANDLE })
+    await as(SESSION_X, 'orchestration.dispatch', {
+      task: taskId,
+      to: WORKER_HANDLE,
+      route: 'requested-route'
+    })
 
     const asked = await as(undefined, 'orchestration.ask', {
       from: WORKER_HANDLE,

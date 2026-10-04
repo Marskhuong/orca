@@ -230,9 +230,11 @@ describe('orchestration RPC methods', () => {
       setup()
       const task = db.createTask({ spec: 'work' })
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const result = (await call('orchestration.dispatch', {
         task: task.id,
-        to: 'term_a'
+        to: 'term_a',
+        route: 'requested-route'
       })) as { dispatch: { task_id: string; status: string } }
 
       expect(result.dispatch.task_id).toBe(task.id)
@@ -246,9 +248,11 @@ describe('orchestration RPC methods', () => {
       )
       const task = db.createTask({ spec: 'work' })
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const result = (await call('orchestration.dispatch', {
         task: task.id,
-        to: 'term_a'
+        to: 'term_a',
+        route: 'requested-route'
       })) as { dispatch: { id: string } }
 
       expect(runtime.getTerminalPaneKey).toHaveBeenCalledWith('term_a')
@@ -269,9 +273,11 @@ describe('orchestration RPC methods', () => {
       })
       const task = db.createTask({ spec: 'work' })
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const result = (await call('orchestration.dispatch', {
         task: task.id,
-        to: 'term_a'
+        to: 'term_a',
+        route: 'requested-route'
       })) as { dispatch: { id: string } }
 
       expect(db.getDispatchContextById(result.dispatch.id)).toMatchObject({
@@ -285,9 +291,11 @@ describe('orchestration RPC methods', () => {
       setup()
       const task = db.createTask({ spec: 'work' })
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const result = (await call('orchestration.dispatch', {
         task: task.id,
-        to: 'term_a'
+        to: 'term_a',
+        route: 'requested-route'
       })) as { dispatch: { id: string } }
 
       expect(runtime.getTerminalProcessIncarnation('term_a')).toBe('runtime_test:term_a:1')
@@ -302,7 +310,8 @@ describe('orchestration RPC methods', () => {
       await expect(
         call('orchestration.dispatch', {
           task: child.id,
-          to: 'term_a'
+          to: 'term_a',
+          route: 'requested-route'
         })
       ).rejects.toThrow('only ready tasks can be dispatched')
     })
@@ -320,6 +329,7 @@ describe('orchestration RPC methods', () => {
         call('orchestration.dispatch', {
           task: task.id,
           to: 'term_a',
+          route: 'requested-route',
           inject: true
         })
       ).rejects.toThrow('terminal_not_writable')
@@ -342,6 +352,7 @@ describe('orchestration RPC methods', () => {
       await call('orchestration.dispatch', {
         task: task.id,
         to: 'term_a',
+        route: 'requested-route',
         inject: true,
         devMode: true
       })
@@ -358,9 +369,11 @@ describe('orchestration RPC methods', () => {
       const task = db.createTask({ spec: 'work' })
       vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('orca-ide')
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const result = (await call('orchestration.dispatch', {
         task: task.id,
         to: 'term_wsl',
+        route: 'requested-route',
         returnPreamble: true
       })) as { preamble: string }
 
@@ -384,6 +397,7 @@ describe('orchestration RPC methods', () => {
       await call('orchestration.dispatch', {
         task: task.id,
         to: 'term_a',
+        route: 'requested-route',
         inject: true,
         from: 'term_coord'
       })
@@ -405,6 +419,7 @@ describe('orchestration RPC methods', () => {
         call('orchestration.dispatch', {
           task: task.id,
           to: 'term_a',
+          route: 'requested-route',
           inject: true
         })
       ).rejects.toThrow(buildInjectRejectionMessage('term_a'))
@@ -416,18 +431,20 @@ describe('orchestration RPC methods', () => {
       const t2 = db.createTask({ spec: 'second' })
       createRootDispatch(db, t1.id, 'term_a')
 
-      await expect(call('orchestration.dispatch', { task: t2.id, to: 'term_a' })).rejects.toThrow(
-        /already has an active dispatch/
-      )
+      await expect(
+        call('orchestration.dispatch', { task: t2.id, to: 'term_a', route: 'requested-route' })
+      ).rejects.toThrow(/already has an active dispatch/)
     })
 
     it('dry-run returns the preamble without mutating state', async () => {
       setup()
       const task = db.createTask({ spec: 'work' })
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const result = (await call('orchestration.dispatch', {
         task: task.id,
         to: 'term_a',
+        route: 'requested-route',
         inject: true,
         dryRun: true,
         from: 'term_coord'
@@ -454,15 +471,19 @@ describe('orchestration RPC methods', () => {
       vi.spyOn(runtime, 'getNestedWorkerMaxDepth').mockReturnValue(2)
       const task = db.createTask({ spec: 'work' })
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const preview = (await call('orchestration.dispatch', {
         task: task.id,
         to: 'term_a',
+        route: 'requested-route',
         dryRun: true,
         from: 'term_coord'
       })) as { preamble: string }
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const dispatched = (await call('orchestration.dispatch', {
         task: task.id,
         to: 'term_a',
+        route: 'requested-route',
         returnPreamble: true,
         from: 'term_coord'
       })) as { preamble: string }
@@ -477,9 +498,11 @@ describe('orchestration RPC methods', () => {
       setup()
       const task = db.createTask({ spec: 'work' })
 
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
       const result = (await call('orchestration.dispatch', {
         task: task.id,
         to: 'term_a',
+        route: 'requested-route',
         returnPreamble: true,
         from: 'term_coord'
       })) as { dispatch: { id: string }; preamble: string }

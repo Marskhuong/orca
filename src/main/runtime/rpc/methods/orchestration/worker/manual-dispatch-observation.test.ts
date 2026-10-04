@@ -60,10 +60,12 @@ describe('manual Dispatch observation', () => {
       throw new Error('Missing method orchestration.dispatch')
     }
 
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
     const result = (await dispatchMethod.handler(
       dispatchMethod.params?.parse({
         task: task.id,
         to: 'term_worker',
+        route: 'requested-route',
         from: 'term_coord',
         run: run.id,
         inject: true

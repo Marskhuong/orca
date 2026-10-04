@@ -149,11 +149,13 @@ describe('manual Dispatch release', () => {
   }
 
   async function dispatchTask(taskId: string, handle: string): Promise<string> {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: test fixture result shape; the assertions below verify it.
     const result = (await call('orchestration.dispatch', {
       task: taskId,
       run: runId,
       from: COORDINATOR,
-      to: handle
+      to: handle,
+      route: 'requested-route'
     })) as { dispatch: { id: string } }
     return result.dispatch.id
   }

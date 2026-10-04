@@ -697,7 +697,13 @@ describe('legacy coordinator takeover races', () => {
     const pending = harness.dispatcher.dispatch(
       request(
         'orchestration.dispatch',
-        { task: target.id, to: targetHandle, from: COORDINATOR_HANDLE, inject: true },
+        {
+          task: target.id,
+          to: targetHandle,
+          from: COORDINATOR_HANDLE,
+          inject: true,
+          route: 'requested-route'
+        },
         'dispatch-detection-takeover'
       )
     )

@@ -162,7 +162,11 @@ describe('every target param resolves both spellings of a party to one canonical
       const runId = await chatRun()
       const task = h.db.createTask({ runId, spec: 'work' })
 
-      const { dispatch } = await as(SESSION_X, 'orchestration.dispatch', { task: task.id, to })
+      const { dispatch } = await as(SESSION_X, 'orchestration.dispatch', {
+        task: task.id,
+        to,
+        route: 'requested-route'
+      })
 
       expect(dispatch).toMatchObject({
         assignee_handle: handle,
@@ -180,7 +184,8 @@ describe('every target param resolves both spellings of a party to one canonical
 
     const response = await call(SESSION_X, 'orchestration.dispatch', {
       task: task.id,
-      to: ADDRESS_Z
+      to: ADDRESS_Z,
+      route: 'requested-route'
     })
 
     expect(response).toMatchObject({
@@ -346,7 +351,11 @@ describe('no writer stores a structured worker under its session address', () =>
   it('keeps every to_handle and from_handle at the canonical address across every mail writer', async () => {
     const runId = await chatRun()
     const task = h.db.createTask({ runId, spec: 'work' })
-    await as(SESSION_X, 'orchestration.dispatch', { task: task.id, to: ADDRESS_Y })
+    await as(SESSION_X, 'orchestration.dispatch', {
+      task: task.id,
+      to: ADDRESS_Y,
+      route: 'requested-route'
+    })
     assignTerminal(runId)
 
     for (const to of [ADDRESS_Y, handle]) {

@@ -134,10 +134,16 @@ describe('route dispatch eligibility', () => {
     })
   })
 
-  it('keeps the capacity-only contract for an unattributed dispatch without recorded readiness', () => {
+  it('fails closed when the dispatch names no posture route, even without recorded readiness', () => {
     const evidence = posture([{ route_identity: 'requested-route', availability: 'UNKNOWN' }])
-    expect(evaluateRouteDispatch(evidence, { agent: 'codex' })).toBeNull()
-    expect(evaluateRouteDispatch(evidence, {})).toBeNull()
+    expect(evaluateRouteDispatch(evidence, { agent: 'codex' })).toMatchObject({
+      code: 'ROUTE_IDENTITY_REQUIRED',
+      reason: 'route_absent_from_run_posture'
+    })
+    expect(evaluateRouteDispatch(evidence, {})).toMatchObject({
+      code: 'ROUTE_IDENTITY_REQUIRED',
+      reason: 'route_unresolved'
+    })
   })
 
   it('requires a route once the posture records readiness', () => {

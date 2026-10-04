@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RpcContext } from '../../core'
 import { createOrchestrationRpcHarness } from './rpc-test-harness'
 import type { OrchestrationDb } from '../../../orchestration/db'
+import { RUNTIME_CAPABILITIES } from '../../../../../shared/protocol-version'
 
 type CliRuntimeClient = {
   isRemote?: boolean
@@ -43,6 +44,10 @@ describe('orchestration CLI/runtime boundary', () => {
       isRemote: false,
       /** Preserves terminal-handle validation while routing other calls through runtime RPC. */
       async call<T>(method: string, params?: unknown): Promise<{ result: T }> {
+        if (method === 'status.get') {
+          // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the CLI reads only capabilities from this status.
+          return { result: { capabilities: [...RUNTIME_CAPABILITIES] } as T }
+        }
         if (method === 'terminal.resolveIdentity') {
           return {
             result: { identity: { handle: objectParams(params).terminal, live: true } } as T
@@ -85,7 +90,8 @@ describe('orchestration CLI/runtime boundary', () => {
 
     await runCli(handlers['orchestration dispatch'], runtimeClient, [
       ['task', child.id],
-      ['to', 'term_worker']
+      ['to', 'term_worker'],
+      ['route', 'requested-route']
     ])
     expect(db.getTask(child.id)?.status).toBe('dispatched')
     expect(db.getDispatchContext(child.id)?.assignee_handle).toBe('term_worker')

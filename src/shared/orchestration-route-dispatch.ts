@@ -78,9 +78,9 @@ type PostureRoute = RunCapacityEvidence['RUN_ROUTING_POSTURE']['routes'][number]
 /**
  * The refusal for this dispatch under the Run's recorded posture, or null when it may proceed.
  *
- * A route found in the posture must be capacity-authorized and READY. An explicit route missing
- * from the posture has no authorization. A dispatch that names no posture route keeps the
- * capacity-only contract unless the posture records readiness, in which case it must name one.
+ * The dispatch must resolve to a posture route that is capacity-authorized and recorded READY.
+ * An explicit route missing from the posture has no capacity authorization; any other dispatch
+ * that names no posture route, or cannot be attributed at all, must name one.
  */
 export function evaluateRouteDispatch(
   evidence: RunCapacityEvidence,
@@ -107,14 +107,12 @@ export function evaluateRouteDispatch(
         reason: 'route_absent_from_run_posture'
       }
     }
-    if (routes.some((route) => route.readiness !== undefined)) {
-      return {
-        code: 'ROUTE_IDENTITY_REQUIRED',
-        route: resolved?.identity ?? null,
-        reason: 'run_posture_records_readiness'
-      }
+    // Why: CANON-R028 fails closed on unrecorded readiness, so a dispatch must name a posture route.
+    return {
+      code: 'ROUTE_IDENTITY_REQUIRED',
+      route: resolved?.identity ?? null,
+      reason: resolved ? 'route_absent_from_run_posture' : 'route_unresolved'
     }
-    return null
   }
   if (entry.availability === 'PRESERVED' || entry.availability === 'UNAVAILABLE') {
     return {

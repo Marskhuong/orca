@@ -264,6 +264,7 @@ function dispatchTaskResponse(
     request('orchestration.dispatch', {
       task: taskId,
       to: terminalHandle,
+      route: 'requested-route',
       from: COORDINATOR_HANDLE,
       run: harness.runId
     })
