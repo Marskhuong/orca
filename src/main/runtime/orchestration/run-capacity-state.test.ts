@@ -40,6 +40,27 @@ describe('Run capacity persistence boundaries', () => {
       expect(started.worker.state).toBe('starting')
     }
   )
+
+  it('persists an omitted Antigravity participant as UNKNOWN without altering other routes', () => {
+    const evidence = capacityEvidence()
+    evidence.RUN_ROUTING_POSTURE.routes = evidence.RUN_ROUTING_POSTURE.routes.filter(
+      (route) => route.route_identity !== 'antigravity'
+    )
+    const otherRoutes = evidence.RUN_ROUTING_POSTURE.routes
+    const recorded = recordRunCapacity(db, runId, evidence)
+    expect(
+      recorded.RUN_ROUTING_POSTURE.routes.filter((route) => route.route_identity !== 'antigravity')
+    ).toEqual(otherRoutes)
+    expect(recorded.RUN_ROUTING_POSTURE.routes.at(-1)).toMatchObject({
+      route_identity: 'antigravity',
+      availability: 'UNKNOWN',
+      availability_source: 'NONE',
+      readiness: 'UNKNOWN',
+      snapshot_id: 'UNKNOWN'
+    })
+    expect(readRunCapacity(db, runId)).toEqual(recorded)
+    expect(evidence.RUN_ROUTING_POSTURE.routes).toEqual(otherRoutes)
+  })
   it('refuses manual dispatch, including substantive injection/reuse, before persistence', () => {
     const task = db.createTask({ runId, spec: 'manual worker' })
     expect(() =>

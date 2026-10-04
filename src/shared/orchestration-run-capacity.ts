@@ -57,6 +57,30 @@ export const RunCapacityEvidence = z
       ctx.addIssue({ code: 'custom', message: 'Inconsistent Run capacity evidence' })
     }
   })
+  .transform((evidence, ctx) => {
+    const posture = evidence.RUN_ROUTING_POSTURE
+    if (!posture.routes.some((route) => route.route_identity === 'antigravity')) {
+      if (posture.routes.length === 1000) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Run posture must leave room for Antigravity readiness'
+        })
+        return z.NEVER
+      }
+      // Antigravity participates only through explicit governed readiness, without inferred capacity.
+      posture.routes.push({
+        route_identity: 'antigravity',
+        availability: 'UNKNOWN',
+        availability_source: 'NONE',
+        reserve: 'NONE',
+        capacity_observation: 'UNKNOWN',
+        snapshot_id: evidence.RUN_CAPACITY_SNAPSHOT_ID,
+        readiness: 'UNKNOWN',
+        readiness_reason: 'Antigravity requires an explicit bounded readiness check'
+      })
+    }
+    return evidence
+  })
 
 export type RunCapacityEvidence = z.infer<typeof RunCapacityEvidence>
 export const RUN_CAPACITY_RUNTIME_CAPABILITY = 'orchestration.run-capacity.v1'

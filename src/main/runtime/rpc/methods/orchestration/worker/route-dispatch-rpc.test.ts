@@ -122,6 +122,50 @@ describe('governed route dispatch and agent-launch fence', () => {
     })
   })
 
+  it('blocks omitted Antigravity at readiness with zero worker effects', async () => {
+    await record([
+      { route_identity: 'claude', readiness: 'READY' },
+      { route_identity: 'codex', readiness: 'READY' },
+      { route_identity: 'deepseek', readiness: 'READY' }
+    ])
+    await expect(
+      h.call('orchestration.workerStart', {
+        from: 'term_coord',
+        spec: 'manual AGY',
+        agent: 'antigravity'
+      })
+    ).rejects.toMatchObject({
+      code: 'ROUTE_NOT_READY',
+      data: {
+        route: 'antigravity',
+        readiness: 'UNKNOWN',
+        effectsApplied: false,
+        workerCreated: false
+      }
+    })
+    expectNoWorkerEffects()
+  })
+  it('admits explicitly READY Antigravity to the worker readiness lifecycle with capacity UNKNOWN', async () => {
+    await record([
+      {
+        route_identity: 'antigravity',
+        availability: 'UNKNOWN',
+        availability_source: 'NONE',
+        readiness: 'READY',
+        readiness_reason: 'Bounded readiness evidence'
+      }
+    ])
+    const dispatchId = dispatchIdOf(
+      await h.call('orchestration.workerStart', {
+        from: 'term_coord',
+        spec: 'manual AGY',
+        agent: 'antigravity'
+      })
+    )
+    expect(h.db.getWorkerDispatch(dispatchId)?.state).toBe('ready')
+    expect(h.runtime.createTerminal).toHaveBeenCalledTimes(1)
+    expect(h.runtime.sendTerminalAgentPrompt).toHaveBeenCalledTimes(1)
+  })
   it.each([
     { route: 'qwen', agent: 'opencode' },
     { agent: 'qwen-code' },

@@ -159,4 +159,83 @@ describe('route dispatch eligibility', () => {
     const invalid: Partial<Route> = JSON.parse('{"route_identity":"codex","readiness":"MAYBE"}')
     expect(() => posture([invalid])).toThrow()
   })
+  it('includes absent Antigravity honestly without changing the other posture routes', () => {
+    const evidence = posture([{ route_identity: 'claude', readiness: 'READY' }])
+    expect(evidence.RUN_ROUTING_POSTURE.routes[0]).toMatchObject({
+      route_identity: 'claude',
+      availability: 'AVAILABLE',
+      readiness: 'READY'
+    })
+    expect(evidence.RUN_ROUTING_POSTURE.routes[1]).toMatchObject({
+      route_identity: 'antigravity',
+      availability: 'UNKNOWN',
+      availability_source: 'NONE',
+      readiness: 'UNKNOWN',
+      snapshot_id: 'snap'
+    })
+    expect(RunCapacityEvidenceSchema.parse(evidence)).toEqual(evidence)
+    expect(evaluateRouteDispatch(evidence, { agent: 'antigravity' })).toMatchObject({
+      code: 'ROUTE_NOT_READY',
+      route: 'antigravity',
+      readiness: 'UNKNOWN'
+    })
+  })
+  it('allows explicitly represented READY Antigravity without claiming known capacity', () => {
+    const evidence = posture([
+      {
+        route_identity: 'antigravity',
+        availability: 'UNKNOWN',
+        availability_source: 'NONE',
+        readiness: 'READY',
+        readiness_reason: 'Bounded readiness check completed'
+      }
+    ])
+    expect(evidence.RUN_ROUTING_POSTURE.routes).toHaveLength(1)
+    expect(evidence.RUN_ROUTING_POSTURE.routes[0]?.availability).toBe('UNKNOWN')
+    expect(resolveDispatchRoute({ agent: 'antigravity' })).toEqual({
+      identity: 'antigravity',
+      source: 'agent'
+    })
+    expect(evaluateRouteDispatch(evidence, { agent: 'antigravity' })).toBeNull()
+    expect(
+      evaluateRouteDispatch(evidence, {
+        route: 'antigravity',
+        agent: 'antigravity',
+        model: 'google/opaque-model'
+      })
+    ).toBeNull()
+  })
+  it.each([undefined, 'UNKNOWN', 'NOT_READY'] as const)(
+    'refuses Antigravity readiness %s without replacing explicit evidence',
+    (readiness) => {
+      const evidence = posture([
+        {
+          route_identity: 'antigravity',
+          availability: 'UNKNOWN',
+          availability_source: 'NONE',
+          readiness
+        }
+      ])
+      expect(evidence.RUN_ROUTING_POSTURE.routes).toHaveLength(1)
+      expect(evaluateRouteDispatch(evidence, { agent: 'antigravity' })).toMatchObject({
+        code: 'ROUTE_NOT_READY',
+        readiness: readiness ?? 'UNRECORDED'
+      })
+    }
+  )
+  it('does not authorize unavailable Antigravity even when READY', () => {
+    expect(
+      evaluateRouteDispatch(
+        posture([
+          { route_identity: 'antigravity', availability: 'UNAVAILABLE', readiness: 'READY' }
+        ]),
+        { agent: 'antigravity' }
+      )
+    ).toMatchObject({ code: 'ROUTE_CAPACITY_NOT_AUTHORIZED' })
+  })
+  it('keeps the posture bounded when the readiness participant cannot fit', () => {
+    expect(() =>
+      posture(Array.from({ length: 1000 }, (_, i) => ({ route_identity: `route-${i}` })))
+    ).toThrow('leave room')
+  })
 })
