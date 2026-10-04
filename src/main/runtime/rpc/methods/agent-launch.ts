@@ -50,6 +50,7 @@ import {
   selectAgentLaunchTabForCaller
 } from './agent-launch-caller-selection'
 import { agentLaunchWorkspaceFactory } from './agent-launch-worktree-creation'
+import { assertNotGovernedAgentLaunch } from '../governed-agent-launch-fence'
 
 /**
  * Advertising `agent.launch.v2` is a client's statement that it understands EITHER outcome — a
@@ -309,6 +310,7 @@ export const AGENT_LAUNCH_METHODS = [
       if (!supportsAgentLaunch(context)) {
         throw new Error('agent_launch_replay_unsupported')
       }
+      assertNotGovernedAgentLaunch(context, 'agent.launchReplay')
       try {
         return await runReplaySafeAgentLaunch(params, context)
       } catch (error) {
@@ -335,6 +337,7 @@ export const AGENT_LAUNCH_METHODS = [
       if (!supportsAgentLaunch(context)) {
         throw new Error('agent_launch_unsupported')
       }
+      assertNotGovernedAgentLaunch(context, 'agent.launch')
       if (!params.operationId) {
         return runLegacyAgentLaunch(params, context)
       }

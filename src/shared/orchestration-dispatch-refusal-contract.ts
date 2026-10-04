@@ -1,4 +1,5 @@
 import { TUI_AGENT_CONFIG } from './tui-agent-config'
+import type { RouteDispatchRefusal, RouteDispatchRefusalCode } from './orchestration-route-dispatch'
 
 // Why: one source for each dispatch refusal's code, message, and data, so the runtime emits and
 // the CLI test formats the identical envelope. Messages are supplied per call site because each
@@ -10,6 +11,8 @@ export type DispatchRefusalReceipt = {
     | 'task_not_startable'
     | 'inject_rejected'
     | 'RUN_CAPACITY_HANDSHAKE_REQUIRED'
+    | RouteDispatchRefusalCode
+    | 'GOVERNED_DISPATCH_REQUIRED'
   message: string
   data: Record<string, unknown> & { nextSteps: string[] }
 }
@@ -25,6 +28,74 @@ export function runCapacityHandshakeRequiredRefusal(runId: string): DispatchRefu
       nextSteps: [
         'Read Orca Meter capacity evidence, complete the Run capacity handshake, and record RUN_CAPACITY_SNAPSHOT_ID and RUN_ROUTING_POSTURE with orca orchestration run-capacity-record --id <run_id> --evidence <json> --json.',
         'Retry the substantive dispatch after registration succeeds. UNKNOWN capacity evidence satisfies the gate.'
+      ]
+    }
+  }
+}
+
+const ROUTE_REFUSAL_MESSAGES: Record<RouteDispatchRefusalCode, string> = {
+  ROUTE_RETIRED_BY_POLICY: 'is retired by Product Owner policy and is never dispatchable',
+  ROUTE_CAPACITY_NOT_AUTHORIZED: 'is not capacity-authorized by the Run routing posture',
+  ROUTE_NOT_READY: 'is not recorded READY in the Run routing posture',
+  ROUTE_IDENTITY_REQUIRED: 'must name its route because the Run routing posture records readiness'
+}
+
+const ROUTE_REFUSAL_NEXT_STEPS: Record<RouteDispatchRefusalCode, string> = {
+  ROUTE_RETIRED_BY_POLICY:
+    'Choose another capable and eligible route. A retired route is policy-ineligible and is not a capacity state.',
+  ROUTE_CAPACITY_NOT_AUTHORIZED:
+    'Choose a route the Run posture authorizes, or record updated capacity evidence for this route with orca orchestration run-capacity-record --id <run_id> --evidence <json> --json.',
+  ROUTE_NOT_READY:
+    "Record this route's one bounded readiness check result as readiness READY in RUN_ROUTING_POSTURE, or choose the next capable and eligible route and record ROUTING_FALLBACK_REASON.",
+  ROUTE_IDENTITY_REQUIRED:
+    'Retry worker-start with --route <route_identity> naming a route in the Run posture.'
+}
+
+/** The coordinator owns route choice; this refusal names the problem and never a replacement. */
+export function routeDispatchRefusal(
+  runId: string,
+  refusal: RouteDispatchRefusal
+): DispatchRefusalReceipt {
+  const subject = refusal.route ? `Route ${refusal.route}` : 'This dispatch'
+  return {
+    code: refusal.code,
+    message: `${subject} ${ROUTE_REFUSAL_MESSAGES[refusal.code]} in Run ${runId}. No worker or provider effect was applied.`,
+    data: {
+      runId,
+      route: refusal.route,
+      reason: refusal.reason,
+      ...(refusal.readiness ? { readiness: refusal.readiness } : {}),
+      ...(refusal.readinessReason ? { readinessReason: refusal.readinessReason } : {}),
+      ...(refusal.availability ? { availability: refusal.availability } : {}),
+      effectsApplied: false,
+      workerCreated: false,
+      routeSelectedByRuntime: false,
+      nextSteps: [ROUTE_REFUSAL_NEXT_STEPS[refusal.code]]
+    }
+  }
+}
+
+export type GovernedLaunchCaller = {
+  runId: string
+  role: 'coordinator' | 'worker'
+  surface: string
+}
+
+export function governedDispatchRequiredRefusal(
+  caller: GovernedLaunchCaller
+): DispatchRefusalReceipt {
+  return {
+    code: 'GOVERNED_DISPATCH_REQUIRED',
+    message: `This ${caller.role} belongs to Run ${caller.runId}; ${caller.surface} cannot start an additional agent outside governed dispatch. No agent, terminal, or worktree was created.`,
+    data: {
+      runId: caller.runId,
+      role: caller.role,
+      surface: caller.surface,
+      effectsApplied: false,
+      workerCreated: false,
+      nextSteps: [
+        'Start substantive worker, reviewer, or delegated agent execution with orca orchestration worker-start --task <task_id> --route <route_identity> --json.',
+        'If governed dispatch is refused, keep the refusal visible; do not substitute a direct agent or provider launch.'
       ]
     }
   }

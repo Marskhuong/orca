@@ -24,6 +24,8 @@ Prefer `--json` for agent-driven calls. If the CLI is missing, say so explicitly
 
 ## Full Handoffs
 
+A full handoff is not available from inside a supervised orchestration Run: a Run coordinator or active worker that launches an agent with `worktree create --agent`, an agent `terminal create`, or `agent.launch` is refused with `GOVERNED_DISPATCH_REQUIRED`. Delegate that work with `orca orchestration worker-start` instead, and never substitute a direct provider CLI.
+
 A full handoff transfers ownership to another agent or worktree, then the original agent stops. Treat requests phrased as "hand off", "handoff", "handover", "give this to another agent", "give this to another worktree", "another agent", or "another worktree" as full handoffs unless the user explicitly asks to supervise, monitor, wait for results, track completion, coordinate a DAG, use decision gates, or manage ask/reply.
 
 A handoff is done when the new worktree id and agent handle have been reported and the prompt's send receipt reported `accepted: true`. Do not wait for the receiving agent to finish.

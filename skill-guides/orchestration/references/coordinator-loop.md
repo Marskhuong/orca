@@ -16,6 +16,31 @@ and a consistent posture satisfies the gate. Do not infer `UNAVAILABLE` or
 to the coordinator. Existing workers continue; the next substantive dispatch needs
 the record. `RUN_CAPACITY_HANDSHAKE_REQUIRED` refuses before worker resources exist.
 
+## Route readiness
+
+`AVAILABLE` capacity is not readiness. Record each route's one bounded readiness
+check in its posture entry as `readiness` (`READY`, `NOT_READY`, `UNKNOWN`) with an
+optional `readiness_reason`, then name the chosen route on dispatch:
+
+```text
+ORCA orchestration worker-start --spec "<review>" --worktree current --agent opencode --route deepseek --json
+```
+
+Without `--route`, the route is the model's provider (`provider/model`) or the agent
+id. A posture route that is `PRESERVED`, `UNAVAILABLE`, or not recorded `READY` is
+refused with `ROUTE_CAPACITY_NOT_AUTHORIZED` or `ROUTE_NOT_READY`; once any route
+records readiness, an unattributed dispatch gets `ROUTE_IDENTITY_REQUIRED`. Retired
+routes (Qwen, Qwen Code, Bailian/DashScope models) get `ROUTE_RETIRED_BY_POLICY`
+whatever the posture says. Every refusal has `effectsApplied: false` and
+`workerCreated: false`. The runtime never picks a replacement: choose the next
+capable and eligible route yourself and record `ROUTING_FALLBACK_REASON`.
+
+Inside a Run, start every worker, reviewer, or additional agent with
+`worker-start`. `worktree create --agent`, `terminal create` with an agent launch,
+and `agent.launch` from a Run coordinator or active worker are refused with
+`GOVERNED_DISPATCH_REQUIRED`. Keep a refusal visible; never replace it with a
+direct provider CLI or a direct agent launch.
+
 ## Ready waves
 
 Create independent Tasks before the first wait. Encode only real dependencies,

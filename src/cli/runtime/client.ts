@@ -45,6 +45,16 @@ const LONG_POLL_CLIENT_GRACE_MS = 10_000
 
 const loadWebSocketTransport = async () => await import('./websocket-transport.js')
 
+// Why: agent-launch surfaces need the caller's Orca identity so the runtime can refuse an
+// additional agent started by a governed Run's coordinator or worker outside worker-start.
+const AGENT_LAUNCH_METHODS_WITH_CALLER_EVIDENCE = new Set(['worktree.create', 'terminal.create'])
+
+function carriesOrchestrationCallerEvidence(method: string): boolean {
+  return (
+    method.startsWith('orchestration.') || AGENT_LAUNCH_METHODS_WITH_CALLER_EVIDENCE.has(method)
+  )
+}
+
 export class RuntimeClient {
   private readonly userDataPath: string
   private readonly requestTimeoutMs: number
@@ -123,7 +133,7 @@ export class RuntimeClient {
       }
       return attachDurableMutationRecovery(error, orchestrationRequestId, originalCommand, method)
     }
-    const compatibilityEnvelope = method.startsWith('orchestration.')
+    const compatibilityEnvelope = carriesOrchestrationCallerEvidence(method)
       ? {
           ...this.orchestrationCompatibility,
           compatibilityInvocationId:

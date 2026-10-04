@@ -27,6 +27,8 @@ export const WorkerStartParams = z
     setup: z.enum(['run', 'skip', 'inherit']).optional(),
     terminal: OptionalString,
     agent: OptionalString,
+    // Why: the route the coordinator chose, checked against the Run posture; never selected here.
+    route: OptionalWorkerLaunchPreference,
     model: OptionalWorkerLaunchPreference,
     effort: OptionalWorkerLaunchPreference,
     retryOf: OptionalString,

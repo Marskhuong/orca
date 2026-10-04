@@ -4,6 +4,7 @@ import { getOptionalStringFlag } from '../../flags'
 import { RuntimeClientError } from '../../runtime-client'
 import type { RuntimeStatus } from '../../../shared/runtime-types'
 import { ORCHESTRATION_WORKER_LAUNCH_PREFERENCES_RUNTIME_CAPABILITY } from '../../../shared/protocol-version'
+import { ROUTE_DISPATCH_RUNTIME_CAPABILITY } from '../../../shared/orchestration-route-dispatch'
 import { callOrchestrationMutation } from './mutation-request'
 import { getOptionalPositiveIntegerValueFlag } from './numeric-flags'
 import { isDevCliInvocation } from './runtime-compatibility'
@@ -15,16 +16,24 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
   'orchestration worker-start': async ({ flags, client, cwd, json }) => {
     const model = getOptionalStringFlag(flags, 'model')
     const effort = getOptionalStringFlag(flags, 'effort')
-    if (model || effort) {
+    const route = getOptionalStringFlag(flags, 'route')
+    if (model || effort || route) {
       const status = await client.call<RuntimeStatus>('status.get')
+      const capabilities = status.result.capabilities ?? []
       if (
-        !status.result.capabilities?.includes(
-          ORCHESTRATION_WORKER_LAUNCH_PREFERENCES_RUNTIME_CAPABILITY
-        )
+        (model || effort) &&
+        !capabilities.includes(ORCHESTRATION_WORKER_LAUNCH_PREFERENCES_RUNTIME_CAPABILITY)
       ) {
         throw new RuntimeClientError(
           'incompatible_runtime',
           'The connected Orca runtime does not support worker model or effort overrides. Update or restart Orca and try again.'
+        )
+      }
+      // Why: an older runtime strips the unknown field, which would silently skip the route check.
+      if (route && !capabilities.includes(ROUTE_DISPATCH_RUNTIME_CAPABILITY)) {
+        throw new RuntimeClientError(
+          'incompatible_runtime',
+          'The connected Orca runtime cannot check --route readiness. No worker was started; update or restart Orca and try again.'
         )
       }
     }
@@ -60,6 +69,7 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       comment: getOptionalStringFlag(flags, 'comment'),
       setup: getOptionalStringFlag(flags, 'setup'),
       agent: getOptionalStringFlag(flags, 'agent'),
+      ...(route ? { route } : {}),
       model,
       effort,
       terminal: getOptionalStringFlag(flags, 'terminal'),

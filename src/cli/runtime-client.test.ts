@@ -139,6 +139,53 @@ describe.skipIf(process.platform === 'win32')('RuntimeClient', () => {
     expect(requests[3]?.compatibilityInvocationId).not.toBe(requests[1]?.compatibilityInvocationId)
   })
 
+  it('sends caller evidence on agent-launch surfaces so a governed Run can be fenced', async () => {
+    const userDataPath = mkdtempSync(join(tmpdir(), 'orca-runtime-client-'))
+    const endpoint = join(userDataPath, 'runtime.sock')
+    const requests: Record<string, unknown>[] = []
+    const server = createServer((socket) => {
+      sockets.add(socket)
+      socket.once('close', () => sockets.delete(socket))
+      socket.once('data', (data) => {
+        const request = JSON.parse(String(data).trim()) as Record<string, unknown>
+        requests.push(request)
+        socket.write(
+          `${JSON.stringify({ id: request.id, ok: true, result: {}, _meta: { runtimeId: 'runtime-1' } })}\n`
+        )
+      })
+    })
+    servers.add(server)
+    await new Promise<void>((resolve) => server.listen(endpoint, resolve))
+    writeMetadata(userDataPath, endpoint)
+
+    const priorHandle = process.env.ORCA_TERMINAL_HANDLE
+    process.env.ORCA_TERMINAL_HANDLE = 'term_lead'
+    try {
+      const client = new RuntimeClient(userDataPath, 500)
+      await client.call('worktree.create', { repo: 'repo', startupAgent: 'codex' })
+      await client.call('terminal.create', { worktree: 'repo::wt' })
+      await client.call('worktree.list', {})
+      await client.call('terminal.send', { terminal: 'term_x', text: 'hi' })
+    } finally {
+      if (priorHandle === undefined) {
+        delete process.env.ORCA_TERMINAL_HANDLE
+      } else {
+        process.env.ORCA_TERMINAL_HANDLE = priorHandle
+      }
+    }
+
+    const byMethod = (method: string) => requests.find((request) => request.method === method)
+    for (const method of ['worktree.create', 'terminal.create']) {
+      expect(byMethod(method)?.orchestrationCompatibilityEvidence).toMatchObject({
+        terminalHandle: 'term_lead'
+      })
+      expect(byMethod(method)?.orchestrationContractVersion).toBeUndefined()
+    }
+    for (const method of ['worktree.list', 'terminal.send']) {
+      expect(byMethod(method)?.orchestrationCompatibilityEvidence).toBeUndefined()
+    }
+  })
+
   it('rejects an old local runtime before sending an orchestration mutation', async () => {
     const userDataPath = mkdtempSync(join(tmpdir(), 'orca-runtime-client-'))
     const endpoint = join(userDataPath, 'runtime.sock')

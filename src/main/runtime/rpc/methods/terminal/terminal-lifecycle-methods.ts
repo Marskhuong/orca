@@ -18,6 +18,10 @@ import {
   TerminalWait
 } from './unary-schemas'
 import { TerminalResizeForClient } from './stream-schemas'
+import {
+  assertNotGovernedAgentLaunch,
+  terminalCreateStartsAgent
+} from '../../governed-agent-launch-fence'
 
 export const TERMINAL_LIFECYCLE_METHODS = [
   defineMethod({
@@ -34,7 +38,11 @@ export const TERMINAL_LIFECYCLE_METHODS = [
   defineMethod({
     name: 'terminal.create',
     params: TerminalCreateParams,
-    handler: async (params, { runtime, pairedDeviceId, clientId, clientKind }) => {
+    handler: async (params, context) => {
+      const { runtime, pairedDeviceId, clientId, clientKind } = context
+      if (terminalCreateStartsAgent(params)) {
+        assertNotGovernedAgentLaunch(context, 'terminal.create with an agent launch')
+      }
       // A focused terminal create predates paired-client navigation. Keep the
       // authority boundary here so a remote caller cannot activate the host
       // renderer. This legacy RPC remains a background create for paired viewers;

@@ -13,7 +13,7 @@ import {
   resolveWorkerStartReadinessTimeoutMs
 } from '../../../../../../shared/orchestration-timing-budgets'
 import { assertWorkerStartTaskSpecWithinPromptBudget } from './worker-start-prompt-budget'
-import { requireRunCapacity } from '../../../../orchestration/run-capacity-state'
+import { requireRouteDispatchable } from '../../../../orchestration/run-capacity-state'
 
 export const ORCHESTRATION_WORKER_START_METHODS = [
   defineMethod({
@@ -44,7 +44,11 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
         )
       }
       const existingTask = params.task ? db.getTask(params.task) : undefined
-      requireRunCapacity(db, run.id)
+      requireRouteDispatchable(db, run.id, {
+        route: params.route,
+        agent: params.agent,
+        model: params.model
+      })
       if (params.task && (!existingTask || existingTask.run_id !== run.id)) {
         throw new OrchestrationError(
           'task_not_found',

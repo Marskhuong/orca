@@ -1,6 +1,9 @@
 import { z } from 'zod'
 
 const SnapshotId = z.string().trim().min(1)
+// Why: capacity AVAILABLE is not operational readiness; the coordinator records the result of its
+// one bounded readiness check per route, and governed dispatch requires READY for the route it uses.
+export const RouteReadiness = z.enum(['READY', 'NOT_READY', 'UNKNOWN'])
 export const RunCapacityEvidence = z
   .object({
     RUN_CAPACITY_SNAPSHOT_ID: SnapshotId,
@@ -28,7 +31,9 @@ export const RunCapacityEvidence = z
                 ]),
                 reserve: z.enum(['NONE', 'HIGH_VALUE_ONLY']),
                 capacity_observation: z.string().min(1),
-                snapshot_id: SnapshotId
+                snapshot_id: SnapshotId,
+                readiness: RouteReadiness.optional(),
+                readiness_reason: z.string().trim().min(1).max(512).optional()
               })
               .passthrough()
           )

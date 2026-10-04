@@ -1,6 +1,13 @@
 import { z } from 'zod'
 import { RunCapacityEvidence } from '../../../shared/orchestration-run-capacity'
-import { runCapacityHandshakeRequiredRefusal } from '../../../shared/orchestration-dispatch-refusal-contract'
+import {
+  routeDispatchRefusal,
+  runCapacityHandshakeRequiredRefusal
+} from '../../../shared/orchestration-dispatch-refusal-contract'
+import {
+  evaluateRouteDispatch,
+  type DispatchRouteRequest
+} from '../../../shared/orchestration-route-dispatch'
 import type { OrchestrationDb } from './db'
 import { OrchestrationError } from './orchestration-error'
 
@@ -40,6 +47,21 @@ export function requireRunCapacity(db: OrchestrationDb, runId: string): RunCapac
   }
   const refusal = runCapacityHandshakeRequiredRefusal(runId)
   throw new OrchestrationError(refusal.code, refusal.message, refusal.data)
+}
+
+/** Policy eligibility and readiness for the route this dispatch names or implies; capacity first. */
+export function requireRouteDispatchable(
+  db: OrchestrationDb,
+  runId: string,
+  request: DispatchRouteRequest
+): RunCapacityEvidence {
+  const evidence = requireRunCapacity(db, runId)
+  const refusal = evaluateRouteDispatch(evidence, request)
+  if (refusal) {
+    const receipt = routeDispatchRefusal(runId, refusal)
+    throw new OrchestrationError(receipt.code, receipt.message, receipt.data)
+  }
+  return evidence
 }
 
 export function recordRunCapacity(
