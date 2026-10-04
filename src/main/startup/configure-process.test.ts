@@ -7,6 +7,7 @@ vi.mock('electron', () => {
   const paths = new Map<string, string>([['appData', '/tmp/app-data']])
   return {
     app: {
+      getName: vi.fn(() => 'Orca'),
       getPath: vi.fn((name: string) => paths.get(name) ?? ''),
       setPath: vi.fn((name: string, value: string) => {
         paths.set(name, value)
@@ -253,6 +254,32 @@ describe('patchPackagedProcessPath', () => {
 })
 
 describe('configureDevUserDataPath', () => {
+  it.each([
+    { platform: 'darwin', name: 'Orca MK', preserved: true },
+    { platform: 'darwin', name: 'Orca', preserved: false },
+    { platform: 'win32', name: 'Orca MK', preserved: false },
+    { platform: 'linux', name: 'Orca MK', preserved: false }
+  ])('preserves the custom profile only for packaged macOS MK ($platform/$name)', async (item) => {
+    const { app } = await import('electron')
+    const { configureDevUserDataPath } = await import('./configure-process')
+    const originalPlatform = process.platform
+    try {
+      Object.defineProperty(process, 'platform', { configurable: true, value: item.platform })
+      vi.spyOn(app, 'getName').mockReturnValue(item.name)
+      vi.spyOn(app, 'isPackaged', 'get').mockReturnValue(true)
+      vi.mocked(app.setPath).mockClear()
+      configureDevUserDataPath(false)
+      if (item.preserved) {
+        expect(app.setPath).toHaveBeenCalledWith('userData', join('/tmp/app-data', 'orca'))
+      } else {
+        expect(app.setPath).not.toHaveBeenCalled()
+      }
+    } finally {
+      vi.mocked(app.getName).mockReturnValue('Orca')
+      Object.defineProperty(process, 'platform', { configurable: true, value: originalPlatform })
+    }
+  })
+
   it('forces Electron home into the disposable E2E profile', async () => {
     const { app } = await import('electron')
     const { configureDevUserDataPath } = await import('./configure-process')

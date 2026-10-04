@@ -209,6 +209,10 @@ export function configureDevUserDataPath(isDev: boolean): void {
   }
 
   if (!isDev) {
+    if (process.platform === 'darwin' && app.isPackaged && app.getName() === 'Orca MK') {
+      // Keep the existing custom MK profile in place across rebuilds.
+      app.setPath('userData', join(app.getPath('appData'), 'orca'))
+    }
     return
   }
   const overrideUserDataPath = process.env.ORCA_DEV_USER_DATA_PATH
