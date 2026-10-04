@@ -7,7 +7,7 @@ import type { TuiAgent } from '../../../../../../shared/tui-agent'
 import { recordRunCapacity } from '../../../../orchestration/run-capacity-state'
 import { capacityEvidence } from '../../../../../../shared/orchestration-run-capacity.test-support'
 
-type WorkerStartOptions = { terminal?: string; agent?: TuiAgent }
+type WorkerStartOptions = { terminal?: string; agent?: TuiAgent; model?: string }
 
 function isWorkerStartResult(value: unknown): value is { state: 'ready'; dispatchId: string } {
   return (
@@ -176,6 +176,7 @@ export function createOrchestrationWorkerReleaseHarness(): OrchestrationWorkerRe
     const result = await call('orchestration.workerStart', {
       task: task.id,
       from: 'term_coord',
+      ...(options.model ? { model: options.model } : {}),
       ...(options.terminal ? { terminal: options.terminal } : { agent: options.agent ?? 'codex' })
     })
     if (!isWorkerStartResult(result)) {

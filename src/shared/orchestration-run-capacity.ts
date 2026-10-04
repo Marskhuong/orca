@@ -4,6 +4,7 @@ const SnapshotId = z.string().trim().min(1)
 // Why: capacity AVAILABLE is not operational readiness; the coordinator records the result of its
 // one bounded readiness check per route, and governed dispatch requires READY for the route it uses.
 export const RouteReadiness = z.enum(['READY', 'NOT_READY', 'UNKNOWN'])
+export type RouteReadiness = z.infer<typeof RouteReadiness>
 export const RunCapacityEvidence = z
   .object({
     RUN_CAPACITY_SNAPSHOT_ID: SnapshotId,
@@ -83,10 +84,21 @@ export const RunCapacityEvidence = z
   })
 
 export type RunCapacityEvidence = z.infer<typeof RunCapacityEvidence>
+export const ANTIGRAVITY_READINESS_RUNTIME_CAPABILITY = 'orchestration.antigravity-readiness.v1'
 export const RUN_CAPACITY_RUNTIME_CAPABILITY = 'orchestration.run-capacity.v1'
-export const RunCapacityRecordParams = z.object({
-  id: z.string().min(1),
-  from: z.string().min(1),
-  evidence: RunCapacityEvidence
-})
+export const RunCapacityRecordParams = z
+  .object({
+    id: z.string().min(1),
+    from: z.string().min(1),
+    evidence: RunCapacityEvidence.optional(),
+    antigravityProbe: z
+      .object({
+        worktree: z.string().min(1),
+        model: z.literal('gemini-3.8-flash-high')
+      })
+      .optional()
+  })
+  .refine((value) => !!value.antigravityProbe || !!value.evidence, {
+    message: 'Capacity evidence is required for ordinary record requests'
+  })
 export const RunCapacityShowParams = z.object({ id: z.string().min(1) })

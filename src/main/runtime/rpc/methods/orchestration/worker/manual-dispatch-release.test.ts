@@ -1,3 +1,4 @@
+import { orchestrationTerminalSummary } from '../../../orchestration-terminal-summary.test-support'
 import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type Database from '../../../../../sqlite/sync-database'
@@ -20,6 +21,9 @@ describe('manual Dispatch release', () => {
     db = createCapacityReadyOrchestrationDb(':memory:')
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
+    vi.spyOn(runtime, 'showTerminal').mockImplementation(async (handle) =>
+      orchestrationTerminalSummary(handle)
+    )
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => paneKey(handle))
     vi.spyOn(runtime, 'getTerminalProcessIncarnation').mockImplementation(
       (handle) => `${handle}:process`

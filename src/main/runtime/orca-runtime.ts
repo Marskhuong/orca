@@ -1,3 +1,5 @@
+import { resolveRuntimeAntigravityContext } from './runtime-antigravity-bound-launch'
+import type { RunRow } from './orchestration/types'
 import { installRuntimeLinearCommandSurface } from './runtime-linear-command-surface'
 import { OrcaRuntimeWithResolveWaiter } from './orca-runtime-resolve-waiter'
 import type { RuntimeCommandSurfaceHost } from './orca-runtime-core'
@@ -5,6 +7,16 @@ import { registerWorktreeChangeInvalidator } from '../ipc/worktree-change-invali
 import { registerDetectedWorktreeScanInvalidation } from '../ipc/worktrees/listing/register-detected-worktree-scan-invalidation'
 
 class OrcaRuntimeService extends OrcaRuntimeWithResolveWaiter {
+  async resolveAntigravityReadinessContext(run: RunRow, worktree: string) {
+    return resolveRuntimeAntigravityContext({
+      run,
+      workspace: await this.resolveTerminalWorkspaceLaunchScope(worktree),
+      db: this.getOrchestrationDb(),
+      runtimeEpoch: this.getRuntimeId(),
+      settings: this.requireStore().getSettings()
+    })
+  }
+
   constructor(...args: ConstructorParameters<typeof OrcaRuntimeWithResolveWaiter>) {
     super(...args)
     // Why: the runtime listing re-runs a scan the worktree-change generation overtook and re-lists

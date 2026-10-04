@@ -5,7 +5,7 @@ import {
   type ChildProcessWithoutNullStreams
 } from 'node:child_process'
 import { resolveSpawn } from './spawn-resolution'
-import { forceTerminateProcessTree, signalProcessTree } from './process-tree-termination'
+import * as processTree from './process-tree-termination'
 
 import { hasSpawnObserver, notifySpawnObserver } from './spawn-observer'
 import { createOutputSink } from './bounded-output-sink'
@@ -21,7 +21,11 @@ export type {
 export { DEFAULT_PROCESS_TIMEOUT_MS, DEFAULT_MAX_OUTPUT_BYTES } from './process-spec'
 export { resolveSpawn, type ResolvedSpawn } from './spawn-resolution'
 import type { ProcessSpec, ProcessResult } from './process-spec'
-import { DEFAULT_PROCESS_TIMEOUT_MS, DEFAULT_MAX_OUTPUT_BYTES } from './process-spec'
+import {
+  DEFAULT_PROCESS_TIMEOUT_MS,
+  DEFAULT_MAX_OUTPUT_BYTES,
+  processGroupQuiescenceError
+} from './process-spec'
 /**
  * Grace between the timeout kill and giving up on the child's exit.
  *
@@ -77,6 +81,10 @@ export function runProcess(
   spec: ProcessSpec,
   outputCapture: 'head' | 'tail' = 'head'
 ): Promise<ProcessResult> {
+  const groupQuiescenceError = processGroupQuiescenceError(spec)
+  if (groupQuiescenceError) {
+    return Promise.reject(groupQuiescenceError)
+  }
   if (spec.signal?.aborted) {
     spec.onChildTerminated?.()
     return Promise.resolve({ code: null, signal: null, stdout: '', stderr: '', timedOut: false })
@@ -149,12 +157,12 @@ export function runProcess(
     const signalBarrierTree = (signal?: NodeJS.Signals): Promise<boolean> =>
       (typeof spec.terminationBarrier === 'object'
         ? spec.terminationBarrier.signal(child, signal)
-        : signalProcessTree(child, signal)
+        : processTree.signalProcessTree(child, signal)
       ).catch(() => false)
     const forceBarrierTree = (): Promise<boolean> =>
       (typeof spec.terminationBarrier === 'object'
         ? spec.terminationBarrier.force(child)
-        : forceTerminateProcessTree(child)
+        : processTree.forceTerminateProcessTree(child)
       ).catch(() => false)
 
     const resolveFromClose = (code: number | null, signal: NodeJS.Signals | null): void =>
@@ -166,7 +174,8 @@ export function runProcess(
           ...(spec.captureStdoutAsBytes ? { stdoutBytes: stdout.buffer() } : {}),
           stderr: stderr.text(),
           timedOut,
-          outputTruncated: stdout.truncated() || stderr.truncated()
+          outputTruncated: stdout.truncated() || stderr.truncated(),
+          ...(spec.quiesceGroupOnClose ? { processGroupQuiescent: barrierTerminationVerified } : {})
         })
       )
 
@@ -181,7 +190,10 @@ export function runProcess(
 
     const resolveBarrierIfSafe = (): void => {
       const rootExit = deferredClose ?? deferredExit
-      if (barrierTerminationVerified || (rootExitedBeforeBarrier && rootExit)) {
+      if (
+        barrierTerminationVerified ||
+        (!spec.quiesceGroupOnClose && rootExitedBeforeBarrier && rootExit)
+      ) {
         settleBarrierOutcome()
         return
       }
@@ -316,6 +328,13 @@ export function runProcess(
       if (barrierStopping) {
         deferredClose = { code, signal }
         resolveBarrierIfSafe()
+        return
+      }
+      if (spec.quiesceGroupOnClose) {
+        void processTree.quiesceExitedProcessGroup(child).then((verified) => {
+          barrierTerminationVerified = verified
+          resolveFromClose(code, signal)
+        })
         return
       }
       resolveFromClose(code, signal)

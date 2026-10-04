@@ -69,11 +69,31 @@ export async function requireFederationAttachRoute(
   params: FederationAttachStartInput,
   agent: string | undefined
 ): Promise<void> {
+  const actualAgent = params.terminal
+    ? await terminalAgentIdentity(runtime, params.terminal)
+    : agent
+  if (
+    actualAgent === 'antigravity' ||
+    agent === 'antigravity' ||
+    params.route === 'antigravity' ||
+    params.model?.startsWith('antigravity/')
+  ) {
+    throw new OrchestrationError(
+      'ROUTE_NOT_READY',
+      'Bound Antigravity readiness is not supported on federated launches.',
+      {
+        reason: 'unsupported_execution_host',
+        readiness: 'UNKNOWN',
+        effectsApplied: false,
+        workerCreated: false
+      }
+    )
+  }
   // Why: the execution host checks its own reused agent before attachment or provider effects.
   const refusal = params.capacityEvidence
     ? evaluateRouteDispatch(params.capacityEvidence, {
         route: params.route,
-        agent: params.terminal ? await terminalAgentIdentity(runtime, params.terminal) : agent,
+        agent: actualAgent,
         model: params.model
       })
     : null

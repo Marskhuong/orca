@@ -52,6 +52,8 @@ export type ProcessSpec = {
   stdio?: NodeSpawnOptions['stdio']
   /** Kill the whole process tree and do not settle until termination is verified. */
   terminationBarrier?: boolean | ProcessTerminationBarrier
+  /** Verify the owned POSIX group is quiescent even after a successful root exit. */
+  quiesceGroupOnClose?: boolean
   /** Called once when the child exits or tree termination is verified. */
   onChildTerminated?: () => void
 }
@@ -72,7 +74,19 @@ export type ProcessResult = {
   timedOut: boolean
   /** True when stdout or stderr exceeded `maxOutputBytes` and was clipped. */
   outputTruncated?: boolean
+  /** Present only for callers that explicitly require owned-group cleanup. */
+  processGroupQuiescent?: boolean
 }
 
 export const DEFAULT_PROCESS_TIMEOUT_MS = 30_000
 export const DEFAULT_MAX_OUTPUT_BYTES = 8 * 1024 * 1024
+
+export function processGroupQuiescenceError(spec: ProcessSpec): Error | undefined {
+  if (
+    spec.quiesceGroupOnClose &&
+    (process.platform === 'win32' || !spec.detached || spec.terminationBarrier !== true)
+  ) {
+    return new Error('Owned-group cleanup requires a detached POSIX termination barrier.')
+  }
+  return undefined
+}

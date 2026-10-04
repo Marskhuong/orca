@@ -145,7 +145,7 @@ describe('governed route dispatch and agent-launch fence', () => {
     })
     expectNoWorkerEffects()
   })
-  it('admits explicitly READY Antigravity to the worker readiness lifecycle with capacity UNKNOWN', async () => {
+  it('refuses caller READY Antigravity without runtime authority even with capacity UNKNOWN', async () => {
     await record([
       {
         route_identity: 'antigravity',
@@ -155,16 +155,15 @@ describe('governed route dispatch and agent-launch fence', () => {
         readiness_reason: 'Bounded readiness evidence'
       }
     ])
-    const dispatchId = dispatchIdOf(
-      await h.call('orchestration.workerStart', {
+    await expect(
+      h.call('orchestration.workerStart', {
         from: 'term_coord',
         spec: 'manual AGY',
-        agent: 'antigravity'
+        agent: 'antigravity',
+        model: 'gemini-3.8-flash-high'
       })
-    )
-    expect(h.db.getWorkerDispatch(dispatchId)?.state).toBe('ready')
-    expect(h.runtime.createTerminal).toHaveBeenCalledTimes(1)
-    expect(h.runtime.sendTerminalAgentPrompt).toHaveBeenCalledTimes(1)
+    ).rejects.toMatchObject({ code: 'ROUTE_NOT_READY' })
+    expectNoWorkerEffects()
   })
   it.each([
     { route: 'qwen', agent: 'opencode' },

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RuntimeTerminalWait } from '../../../../../../shared/runtime-types'
 import { reconcileRequestedWorkerTerminalReleases } from '../../../../orchestration/worker-terminal-release-reconciliation'
+import { observeAntigravityRunReadiness } from '../../../../orchestration/run-capacity-state'
+import type { NativeAntigravityReadinessContext } from '../../../../../antigravity/native-readiness-launch-context'
 import { createOrchestrationWorkerReleaseHarness } from './worker-release.test-support'
 
 const READY_WAIT = {
@@ -16,12 +18,33 @@ describe('Antigravity orchestration worker lifecycle', () => {
 
   afterEach(() => h.cleanup())
 
-  it('owns the terminal immediately and delays prompt delivery until AGY is ready', async () => {
+  async function readyFixture(): Promise<void> {
     h.setup()
+    const context: NativeAntigravityReadinessContext = {
+      runId: h.activeRunId,
+      generation: h.db.getRunRaw(h.activeRunId)?.consumer_generation ?? 0,
+      fingerprint: 'trusted-fixture',
+      program: '/audited/agy',
+      cwd: '/fixture',
+      env: {},
+      command: 'agy',
+      launchConfig: { agentCommand: 'agy', agentArgs: '', agentEnv: {} }
+    }
+    vi.spyOn(h.runtime, 'resolveAntigravityReadinessContext').mockResolvedValue(context)
+    await observeAntigravityRunReadiness({
+      db: h.db,
+      runId: h.activeRunId,
+      resolveContext: async () => context,
+      observe: async () => ({ readiness: 'READY', reason: 'captured_fixture_only' })
+    })
+  }
+
+  it('owns the terminal immediately and delays prompt delivery until AGY is ready', async () => {
+    await readyFixture()
     const readiness = h.deferred<RuntimeTerminalWait>()
     vi.spyOn(h.runtime, 'waitForTerminal').mockReturnValue(readiness.promise)
 
-    const pending = h.startWorker({ agent: 'antigravity' })
+    const pending = h.startWorker({ agent: 'antigravity', model: 'gemini-3.8-flash-high' })
     await vi.waitFor(() => expect(h.runtime.waitForTerminal).toHaveBeenCalled())
 
     expect(h.runtime.createTerminal).toHaveBeenCalledWith(
@@ -42,8 +65,11 @@ describe('Antigravity orchestration worker lifecycle', () => {
   })
 
   it('stops only the owned AGY terminal', async () => {
-    h.setup()
-    const { dispatchId } = await h.startWorker({ agent: 'antigravity' })
+    await readyFixture()
+    const { dispatchId } = await h.startWorker({
+      agent: 'antigravity',
+      model: 'gemini-3.8-flash-high'
+    })
 
     await expect(
       h.call('orchestration.workerStop', { dispatch: dispatchId })
@@ -53,9 +79,10 @@ describe('Antigravity orchestration worker lifecycle', () => {
   })
 
   it('releases an owned AGY terminal and recovers a transient stale endpoint', async () => {
-    h.setup()
+    await readyFixture()
     const { dispatchId } = await h.startSettledWorker('succeeded', {
-      agent: 'antigravity'
+      agent: 'antigravity',
+      model: 'gemini-3.8-flash-high'
     })
     vi.mocked(h.runtime.closeTerminal).mockRejectedValueOnce(new Error('Multiplexer disposed'))
 
@@ -79,9 +106,10 @@ describe('Antigravity orchestration worker lifecycle', () => {
   })
 
   it('fails closed on a stale AGY handle and releases it on a fresh retry', async () => {
-    h.setup()
+    await readyFixture()
     const { dispatchId } = await h.startSettledWorker('succeeded', {
-      agent: 'antigravity'
+      agent: 'antigravity',
+      model: 'gemini-3.8-flash-high'
     })
     vi.mocked(h.runtime.showTerminal).mockRejectedValueOnce(new Error('terminal_handle_stale'))
 

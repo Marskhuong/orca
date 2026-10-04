@@ -24,7 +24,7 @@ export function capacityEvidence(
         reserve: 'NONE',
         capacity_observation: availability === 'UNKNOWN' ? 'UNKNOWN' : 'OBSERVED',
         snapshot_id: snapshot,
-        readiness: 'READY'
+        readiness: route_identity === 'antigravity' ? 'UNKNOWN' : 'READY'
       }))
     }
   }

@@ -1,3 +1,4 @@
+import { orchestrationTerminalSummary } from './orchestration-terminal-summary.test-support'
 import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { vi } from 'vitest'
 import type { AgentSessionLease, AgentSessionRecord } from '../../../shared/agent-session-record'
@@ -69,6 +70,9 @@ export function createSessionCallerHarness(hostRef: SessionHostRef): SessionCall
   const db = createCapacityReadyOrchestrationDb(':memory:')
   const runtime = new OrcaRuntimeService()
   runtime.setOrchestrationDb(db)
+  vi.spyOn(runtime, 'showTerminal').mockImplementation(async (handle) =>
+    orchestrationTerminalSummary(handle)
+  )
   vi.spyOn(runtime, 'ensureStructuredAgentSessionHost').mockResolvedValue()
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
     handle === WORKER_HANDLE ? WORKER_PANE : null

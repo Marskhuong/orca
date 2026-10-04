@@ -13,10 +13,7 @@ import { hasWorktreeRemovalRepoOwnerOnOtherHost } from '../worktree-removal-repo
 import { advertisedUrlWatcher } from '../ports/advertised-url-watcher'
 import { deleteWorktreeHistoryDir } from '../terminal-history-deletion'
 import { closeClientHostedBrowserPagesForWorktree } from './worktree-browser-client-page-close'
-import type {
-  ForceDeleteWorktreeBranchResult,
-  RemoveWorktreeResult
-} from '../../shared/worktree/create-types'
+import type * as WorktreeRemoval from '../../shared/worktree/create-types'
 import type { RuntimeTerminalRename } from '../../shared/runtime-types'
 import type { TerminalWorkspaceLaunchScope } from './runtime-legacy-worker-terminal-recovery-types'
 import type { TerminalCreateOptions } from './runtime-terminal-contracts'
@@ -38,6 +35,7 @@ import {
 import { interruptedLocalWorktreeRemovalJob } from './runtime-interrupted-local-worktree-removal'
 import { retryFailedRemovalUnlessRegistered } from '../worktree-removal-table'
 import type { GitWorktreeInfo } from '../../shared/worktree/types'
+import { resolveBoundAntigravityLaunch } from './runtime-antigravity-bound-launch'
 
 export class OrcaRuntimeWithResolveWorktreeRemovalTarget extends OrcaRuntimeWithRemoveManagedWorktree {
   protected async resolveWorktreeRemovalTarget(
@@ -69,7 +67,7 @@ export class OrcaRuntimeWithResolveWorktreeRemovalTarget extends OrcaRuntimeWith
   protected joinPendingWorktreeRemoval(
     worktreeId: string,
     options: RemoveManagedWorktreeOptions
-  ): Promise<RemoveWorktreeResult> | undefined {
+  ): Promise<WorktreeRemoval.RemoveWorktreeResult> | undefined {
     return waitForPendingWorktreeRemoval(worktreeId, parseExecutionHostId(options.hostId)?.id)
   }
 
@@ -198,7 +196,7 @@ export class OrcaRuntimeWithResolveWorktreeRemovalTarget extends OrcaRuntimeWith
     branchName: string,
     expectedHead: string,
     hostId?: string
-  ): Promise<ForceDeleteWorktreeBranchResult> {
+  ): Promise<WorktreeRemoval.ForceDeleteWorktreeBranchResult> {
     return this.preservedBranchCleanup.forceDelete(
       worktreeSelector,
       branchName,
@@ -288,6 +286,9 @@ export class OrcaRuntimeWithResolveWorktreeRemovalTarget extends OrcaRuntimeWith
     }
 
     const settings = store.getSettings()
+    if (opts.antigravityReadinessLaunch) {
+      return resolveBoundAntigravityLaunch(this, opts, workspace, settings)
+    }
     const platform = this.getAgentLaunchPlatformForWorkspace(workspace)
     // Why: `workspace.repo` is display metadata and may be a row from another host; the launch
     // shape must match the PTY route this scope already resolved.

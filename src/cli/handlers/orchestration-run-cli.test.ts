@@ -54,6 +54,32 @@ describe('lightweight Run CLI handlers', () => {
     })
   })
 
+  it('requests one exact AGY check without replacement evidence and requires the new runtime capability', async () => {
+    callMock.mockResolvedValue({ result: { readiness: { readiness: 'UNKNOWN' } } })
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: The checked call assertions verify every handler input used by this fixture.
+    await ORCHESTRATION_HANDLERS['orchestration run-capacity-record']({
+      flags: new Map([
+        ['id', 'run_1'],
+        ['agy-readiness-worktree', 'id:folder'],
+        ['agy-readiness-model', 'gemini-3.8-flash-high']
+      ]),
+      client: { call: callMock },
+      cwd: '/tmp/repo',
+      json: true
+    } as never)
+    expect(callMock).toHaveBeenCalledWith(
+      'orchestration.runCapacityRecord',
+      {
+        id: 'run_1',
+        from: 'term_coord',
+        antigravityProbe: { worktree: 'id:folder', model: 'gemini-3.8-flash-high' }
+      },
+      { timeoutMs: 60000, orchestrationCapability: 'orchestration.antigravity-readiness.v1' }
+    )
+    expect(
+      callMock.mock.calls.filter(([method]) => method === 'orchestration.runCapacityRecord')
+    ).toHaveLength(1)
+  })
   it('reuses the same explicit binding path for run-use and run-current', async () => {
     callMock
       .mockResolvedValueOnce({ result: { run: { id: 'run_1', objective: 'Work' } } })

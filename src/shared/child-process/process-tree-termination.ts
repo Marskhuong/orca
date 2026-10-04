@@ -79,6 +79,17 @@ export async function forceTerminateProcessTree(child: ChildProcess): Promise<bo
   return true
 }
 
+/** Give surviving helpers a bounded write-out grace after their root has exited. */
+export async function quiesceExitedProcessGroup(child: ChildProcess): Promise<boolean> {
+  try {
+    await signalProcessTree(child)
+    await new Promise<void>((done) => setTimeout(done, 250))
+    return await forceTerminateProcessTree(child)
+  } catch {
+    return false
+  }
+}
+
 /** A stubbed child leaves both undefined; only a real code or signal proves exit. */
 function hasExited(child: ChildProcess): boolean {
   return (child.exitCode ?? null) !== null || (child.signalCode ?? null) !== null

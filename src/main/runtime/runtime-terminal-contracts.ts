@@ -20,6 +20,7 @@ import type { TerminalInputKind } from '../../shared/terminal-input-kind'
 import type { RuntimePtyController } from './runtime-pty-controller-contract'
 import type { RuntimeAgentRowSnapshot } from './runtime-worktree-agent-rows'
 import type { WorkerTerminalHostScope } from './orchestration/worker-terminal-process-liveness'
+import type { NativeAntigravityReadinessContext } from '../antigravity/native-readiness-launch-context'
 
 export type TerminalCreateOptions = {
   command?: string
@@ -57,6 +58,8 @@ export type TerminalCreateOptions = {
    */
   agentArgs?: string | null
   launchPreferences?: AgentLaunchPreferences
+  /** Internal governed launch, validated before allocation; RPC callers cannot supply it. */
+  antigravityReadinessLaunch?: NativeAntigravityReadinessContext
   terminalKittyKeyboardProtocol?: boolean
   terminalColorQueryReplies?: TerminalOscColorQueryReplyColors
   viewMode?: 'terminal' | 'chat'

@@ -1,4 +1,13 @@
 import { z } from 'zod'
+import {
+  receiptsFor,
+  runtimeReceiptWriter,
+  antigravityReceiptExpired
+} from './run-capacity-readiness'
+export {
+  observeAntigravityRunReadiness,
+  requireAntigravityRunReadiness
+} from './run-capacity-readiness'
 import { RunCapacityEvidence } from '../../../shared/orchestration-run-capacity'
 import {
   routeDispatchRefusal,
@@ -34,7 +43,27 @@ export function readRunCapacity(
   }
   try {
     const parsed = RunCapacityEvidence.safeParse(JSON.parse(row.data.evidence))
-    return parsed.success ? parsed.data : undefined
+    if (!parsed.success) {
+      return undefined
+    }
+    const route = parsed.data.RUN_ROUTING_POSTURE.routes.find(
+      (entry) => entry.route_identity === 'antigravity'
+    )
+    const receipt = receiptsFor(db).get(runId)
+    if (
+      route &&
+      (route.readiness === 'READY' || route.runtime_readiness_receipt_id) &&
+      (!receipt ||
+        route.runtime_readiness_receipt_id !== receipt.receiptId ||
+        receipt.generation !== db.getRunRaw(runId)?.consumer_generation ||
+        antigravityReceiptExpired(receipt))
+    ) {
+      route.readiness = 'UNKNOWN'
+      route.readiness_reason =
+        receipt?.expiresAt && antigravityReceiptExpired(receipt) ? 'expired' : 'unverified_receipt'
+      delete route.runtime_readiness_receipt_id
+    }
+    return parsed.data
   } catch {
     return undefined
   }
@@ -57,7 +86,11 @@ export async function terminalAgentIdentity(
   try {
     return (await runtime.showTerminal(handle)).agentIdentity
   } catch {
-    return undefined
+    throw new OrchestrationError(
+      'ROUTE_NOT_READY',
+      'Existing terminal identity could not be verified.',
+      { reason: 'identity_unverifiable', effectsApplied: false, workerCreated: false }
+    )
   }
 }
 
@@ -68,6 +101,44 @@ export function requireRouteDispatchable(
   request: DispatchRouteRequest
 ): RunCapacityEvidence {
   const evidence = requireRunCapacity(db, runId)
+  const agy =
+    request.agent === 'antigravity' ||
+    request.route === 'antigravity' ||
+    request.model?.startsWith('antigravity/')
+  if (agy) {
+    const receipt = receiptsFor(db).get(runId)
+    const route = evidence.RUN_ROUTING_POSTURE.routes.find(
+      (entry) => entry.route_identity === 'antigravity'
+    )
+    const reason =
+      (request.route && request.route !== 'antigravity') ||
+      (request.route === 'antigravity' && request.agent && request.agent !== 'antigravity')
+        ? 'route_identity_mismatch'
+        : request.model?.includes('/')
+          ? 'model_identity_mismatch'
+          : !receipt || route?.runtime_readiness_receipt_id !== receipt.receiptId
+            ? 'unverified_receipt'
+            : antigravityReceiptExpired(receipt)
+              ? 'expired'
+              : receipt.readiness !== 'READY'
+                ? receipt.reason
+                : undefined
+    if (reason) {
+      throw new OrchestrationError(
+        'ROUTE_NOT_READY',
+        'Antigravity requires runtime-owned readiness for its actual route.',
+        {
+          runId,
+          route: 'antigravity',
+          readiness: 'UNKNOWN',
+          reason,
+          effectsApplied: false,
+          workerCreated: false,
+          routeSelectedByRuntime: false
+        }
+      )
+    }
+  }
   const refusal = evaluateRouteDispatch(evidence, request)
   if (refusal) {
     const receipt = routeDispatchRefusal(runId, refusal)
@@ -80,9 +151,20 @@ export function recordRunCapacity(
   db: OrchestrationDb,
   runId: string,
   input: unknown,
-  homePeerFingerprint: string | null = null
+  homePeerFingerprint: string | null = null,
+  writer?: typeof runtimeReceiptWriter
 ): RunCapacityEvidence {
   const evidence = RunCapacityEvidence.parse(input)
+  if (writer !== runtimeReceiptWriter) {
+    const route = evidence.RUN_ROUTING_POSTURE.routes.find(
+      (entry) => entry.route_identity === 'antigravity'
+    )
+    if (route && (route.readiness === 'READY' || route.runtime_readiness_receipt_id)) {
+      route.readiness = 'UNKNOWN'
+      route.readiness_reason = 'unverified_receipt'
+      delete route.runtime_readiness_receipt_id
+    }
+  }
   db.requireRun(runId)
   const run = db.getRunRaw(runId)!
   if ((run.home_database === 'remote') !== (homePeerFingerprint !== null)) {

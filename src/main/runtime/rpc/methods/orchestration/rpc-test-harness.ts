@@ -1,3 +1,4 @@
+import { orchestrationTerminalSummary } from '../../orchestration-terminal-summary.test-support'
 import { createCapacityReadyOrchestrationDb } from '../../../orchestration/capacity-ready-db.test-support'
 import { vi } from 'vitest'
 import { ORCHESTRATION_METHODS } from '../orchestration'
@@ -30,6 +31,9 @@ export function createOrchestrationRpcHarness() {
     dbOpen = true
     runtime = new OrcaRuntimeService()
     runtime.setOrchestrationDb(db)
+    vi.spyOn(runtime, 'showTerminal').mockImplementation(async (handle) =>
+      orchestrationTerminalSummary(handle)
+    )
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
       handle === 'term_coord' ? coordinatorPaneKey : null
     )

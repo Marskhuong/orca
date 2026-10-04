@@ -31,6 +31,7 @@ import { requireWorkerAuthority, type WorkerEffect } from './worker-topology'
 import { prepareLocalWorkerStart } from './worker-start-validation'
 import { deliverAndSettleWorkerStartReadiness } from './worker-start-readiness-settlement'
 import { requireRunCapacity } from '../../../../orchestration/run-capacity-state'
+import { resolveAntigravityWorkerReadiness } from './antigravity-worker-readiness'
 
 type WorkerStartMutation = {
   callerFingerprint: string
@@ -127,6 +128,15 @@ export async function startLocalWorker(args: {
         : 'orchestration_default'
       : 'existing_worktree'
   }
+  const antigravityReadinessLaunch = await resolveAntigravityWorkerReadiness({
+    agent,
+    createsWorktree,
+    params,
+    resolvedWorktreeId: resolvedWorktree?.id,
+    runtime,
+    db,
+    run
+  })
   const started = db.createStartingWorkerDispatch({
     creator: resolveDispatchCreator(runtime, params.from, callerSession),
     maxDepth: runtime.getNestedWorkerMaxDepth(),
@@ -172,6 +182,7 @@ export async function startLocalWorker(args: {
       mode,
       agent,
       launchPreferences: launch.preferences,
+      antigravityReadinessLaunch,
       effects,
       onStage: (stage) => {
         failedStage = stage

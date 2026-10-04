@@ -120,7 +120,12 @@ export const ORCHESTRATION_DISPATCH_METHODS = [
 
       // Why: injecting the preamble into a bare shell dumps it as shell commands (gibberish), so require a detected agent first.
       if (params.inject) {
-        const hasAgent = await runtime.isTerminalRunningAgent(to)
+        let hasAgent: boolean
+        try {
+          hasAgent = await runtime.isTerminalRunningAgent(to)
+        } finally {
+          revalidateLegacyCoordinator?.()
+        }
         if (!hasAgent) {
           throw injectRejectedError(to, 'no_agent_detected')
         }
@@ -135,9 +140,27 @@ export const ORCHESTRATION_DISPATCH_METHODS = [
 
       // Why: the target terminal's agent is the route this Task would run on; refuse a retired,
       // unauthorized, or not-READY route before the Dispatch or any injected prompt exists.
+      let actualAgent: string | undefined
+      try {
+        actualAgent = await terminalAgentIdentity(runtime, to)
+      } finally {
+        revalidateLegacyCoordinator?.()
+      }
+      if (actualAgent === 'antigravity' || params.route === 'antigravity') {
+        throw new OrchestrationError(
+          'ROUTE_NOT_READY',
+          'Governed Antigravity injection requires a supported bound launch.',
+          {
+            reason: 'unsupported_launch',
+            readiness: 'UNKNOWN',
+            effectsApplied: false,
+            workerCreated: false
+          }
+        )
+      }
       requireRouteDispatchable(db, run.id, {
         route: params.route,
-        agent: await terminalAgentIdentity(runtime, to)
+        agent: actualAgent
       })
       revalidateLegacyCoordinator?.()
       const ctx = db.createDispatchContext({

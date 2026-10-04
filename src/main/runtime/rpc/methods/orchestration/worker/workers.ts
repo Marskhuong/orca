@@ -47,14 +47,32 @@ export const ORCHESTRATION_WORKER_START_METHODS = [
         )
       }
       const existingTask = params.task ? db.getTask(params.task) : undefined
+      const terminalAgent =
+        params.terminal && !params.on
+          ? await terminalAgentIdentity(runtime, params.terminal)
+          : undefined
+      if (
+        (params.on &&
+          (params.agent === 'antigravity' ||
+            params.route === 'antigravity' ||
+            params.model?.startsWith('antigravity/'))) ||
+        terminalAgent === 'antigravity'
+      ) {
+        throw new OrchestrationError(
+          'ROUTE_NOT_READY',
+          'Governed Antigravity terminal reuse is not supported.',
+          {
+            readiness: 'UNKNOWN',
+            reason: 'unsupported_launch',
+            effectsApplied: false,
+            workerCreated: false
+          }
+        )
+      }
       requireRouteDispatchable(db, run.id, {
         route: params.route,
         // Why: a reused terminal already runs an agent; its host-resolved identity names the route.
-        agent:
-          params.agent ??
-          (params.terminal && !params.on
-            ? await terminalAgentIdentity(runtime, params.terminal)
-            : undefined),
+        agent: terminalAgent ?? params.agent,
         model: params.model
       })
       if (params.task && (!existingTask || existingTask.run_id !== run.id)) {

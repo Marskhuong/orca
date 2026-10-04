@@ -70,6 +70,68 @@ describe('capacity RPC boundaries and disposable Run smoke', () => {
     expect(h.db.getDispatchContext(task.id)).toBeUndefined()
     expect(h.db.getTask(task.id)?.status).toBe('ready')
   })
+  it('accepts a probe request without replacement capacity evidence and refuses unsupported identity before effects', async () => {
+    recordRunCapacity(h.db, h.activeRunId, capacityEvidence())
+    const native = vi
+      .spyOn(h.runtime, 'resolveAntigravityReadinessContext')
+      .mockRejectedValue(new Error('unsupported native context'))
+    await expect(
+      h.call('orchestration.runCapacityRecord', {
+        id: h.activeRunId,
+        from: 'term_coord',
+        antigravityProbe: { worktree: 'id:repo::worktree', model: 'gemini-3.8-flash-high' }
+      })
+    ).resolves.toMatchObject({
+      readiness: {
+        readiness: 'UNKNOWN',
+        reason: 'unsupported_context',
+        inferenceMayConsumeTokens: false
+      }
+    })
+    expect(native).toHaveBeenCalledOnce()
+    expect(h.runtime.createTerminal).not.toHaveBeenCalled()
+    expect(h.db.listTasks({ runId: h.activeRunId })).toEqual([])
+  })
+  it.each([false, true])(
+    'refuses actual AGY terminal dispatch with inject=%s despite an explicit unrelated route',
+    async (inject) => {
+      recordRunCapacity(h.db, h.activeRunId, capacityEvidence())
+      const original = vi.mocked(h.runtime.showTerminal).getMockImplementation()
+      if (!original) {
+        throw new Error('Expected fixture terminal reader')
+      }
+      vi.mocked(h.runtime.showTerminal).mockImplementation(async (handle) => ({
+        ...(await original(handle)),
+        agentIdentity: 'antigravity'
+      }))
+      const task = h.db.createTask({ runId: h.activeRunId, spec: 'guard AGY injection' })
+      await expect(
+        h.call('orchestration.dispatch', {
+          task: task.id,
+          from: 'term_coord',
+          to: 'term_worker',
+          inject,
+          route: 'claude'
+        })
+      ).rejects.toMatchObject({ code: 'ROUTE_NOT_READY' })
+      expect(h.runtime.sendTerminalAgentPrompt).not.toHaveBeenCalled()
+      expect(h.db.getDispatchContext(task.id)).toBeUndefined()
+    }
+  )
+  it('refuses an unverifiable existing terminal identity instead of laundering an explicit route', async () => {
+    recordRunCapacity(h.db, h.activeRunId, capacityEvidence())
+    vi.mocked(h.runtime.showTerminal).mockRejectedValue(new Error('unreachable terminal'))
+    await expect(
+      h.call('orchestration.workerStart', {
+        spec: 'reuse',
+        from: 'term_coord',
+        terminal: 'term_worker',
+        route: 'claude'
+      })
+    ).rejects.toMatchObject({ code: 'ROUTE_NOT_READY' })
+    expect(h.runtime.sendTerminalAgentPrompt).not.toHaveBeenCalled()
+    expect(h.db.listTasks({ runId: h.activeRunId })).toEqual([])
+  })
   it('permits status, list, evidence reads and dry-run without a handshake', async () => {
     const task = h.db.createTask({ runId: h.activeRunId, spec: 'preview' })
     await expect(h.call('orchestration.runShow', { id: h.activeRunId })).resolves.toBeDefined()

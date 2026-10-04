@@ -1,3 +1,4 @@
+import { orchestrationTerminalSummary } from './orchestration-terminal-summary.test-support'
 import { createCapacityReadyOrchestrationDb } from '../orchestration/capacity-ready-db.test-support'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -219,6 +220,9 @@ function createHarness(): Harness {
   const db = createCapacityReadyOrchestrationDb(dbPath)
   const runtime = new OrcaRuntimeService()
   runtime.setOrchestrationDb(db)
+  vi.spyOn(runtime, 'showTerminal').mockImplementation(async (handle) =>
+    orchestrationTerminalSummary(handle)
+  )
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => {
     if (handle === COORDINATOR_HANDLE) {
       return COORDINATOR_PANE
