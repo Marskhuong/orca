@@ -1,5 +1,5 @@
 import {
-  antigravityCompletionCommand,
+  registerAntigravityWorkerStop,
   buildAntigravityCompletionPreamble
 } from '../../../../orchestration/antigravity-completion-launch'
 import type { RuntimeTerminalSend } from '../../../../../../shared/runtime-terminal-contracts'
@@ -48,10 +48,12 @@ export async function deliverWorkerDispatchPreamble(args: {
   structuredTurnStart?: WorkerTurnStartObservation
 }> {
   const { runtime, structuredSession, terminalHandle } = args
+  if (args.agent === 'antigravity' && !structuredSession) {
+    await registerAntigravityWorkerStop(runtime, args.dispatchId)
+  }
   const preamble =
     args.agent === 'antigravity' && !structuredSession
       ? buildAntigravityCompletionPreamble({
-          command: antigravityCompletionCommand(runtime, args.dispatchId),
           taskSpec: args.taskSpec
         })
       : buildDispatchPreamble({

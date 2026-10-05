@@ -2,13 +2,11 @@ import { z } from 'zod'
 import { assertWorkerCanReport } from './worker-report-admission'
 import type { OrcaRuntimeService } from '../orca-runtime'
 import { agentHookServer } from '../../agent-hooks/server'
-import {
-  issueAntigravityCompletion,
-  ANTIGRAVITY_COMPLETION_PATH
-} from '../../agent-hooks/antigravity-completion-capability'
+import { issueAntigravityCompletion } from '../../agent-hooks/antigravity-completion-capability'
+import { registerAntigravityStopCompletion } from '../../agent-hooks/antigravity-stop-completion'
 import { sendPointToPointMessage } from '../rpc/methods/orchestration/messaging/send-point-to-point'
 
-export function antigravityCompletionCommand(
+export function createAntigravityCompletionCapability(
   runtime: OrcaRuntimeService,
   dispatchId: string
 ): string {
@@ -89,12 +87,47 @@ export function antigravityCompletionCommand(
       }
     }
   })
-  return `orca orchestration complete --dispatch-id ${dispatchId} --runtime-id ${runtimeId} --endpoint http://127.0.0.1:${port}${ANTIGRAVITY_COMPLETION_PATH} --dispatch-capability ${capability}`
+  return capability
 }
 
-export function buildAntigravityCompletionPreamble(args: {
-  command: string
-  taskSpec: string
-}): string {
-  return `You are an Orca governed Antigravity worker. Do only this task.\nWhen finished, report exactly once using this completion-only command:\n${args.command} --outcome succeeded --summary "<brief result>"\nUse --outcome failed for failure. This one-shot capability expires in five minutes.\nDo not use orchestration send or inspect Orca runtime metadata. Do not request sandbox bypass.\nAfter completion, idle; no more actions.\n\nTASK:\n${args.taskSpec}`
+export async function registerAntigravityWorkerStop(
+  runtime: OrcaRuntimeService,
+  dispatchId: string
+): Promise<void> {
+  const authority = runtime.getOrchestrationDispatchAuthority(
+    runtime.getOrchestrationDb().getDispatchContextById(dispatchId)?.assignee_handle ?? ''
+  )
+  if (!authority?.launchTokenHash || !authority.paneKey || authority.hostScope.kind !== 'local') {
+    throw new Error('completion_hook_authority_unavailable')
+  }
+  const terminal = await runtime.showTerminal(authority.terminalHandle)
+  if (!terminal.worktreePath || terminal.agentIdentity !== 'antigravity') {
+    throw new Error('completion_hook_workspace_unavailable')
+  }
+  const runtimeId = runtime.getRuntimeId()
+  registerAntigravityStopCompletion(authority.paneKey, {
+    dispatchId,
+    runtimeId,
+    launchTokenHash: authority.launchTokenHash,
+    model: 'gemini-3.8-flash-high',
+    workspacePath: terminal.worktreePath,
+    capability: createAntigravityCompletionCapability(runtime, dispatchId),
+    assertCurrent: () => {
+      const current = runtime.getOrchestrationDispatchAuthority(authority.terminalHandle)
+      if (
+        runtime.getRuntimeId() !== runtimeId ||
+        !current ||
+        current.paneKey !== authority.paneKey ||
+        current.processIncarnation !== authority.processIncarnation ||
+        current.launchTokenHash !== authority.launchTokenHash ||
+        current.worktreeId !== authority.worktreeId
+      ) {
+        throw new Error('completion_hook_authority_changed')
+      }
+    }
+  })
+}
+
+export function buildAntigravityCompletionPreamble(args: { taskSpec: string }): string {
+  return `You are an Orca governed Antigravity worker. Do only this task.\nOrca observes completion through the provider Stop hook. Do not run completion commands or inspect Orca runtime metadata.\nAfter your final response, idle; no more actions.\n\nTASK:\n${args.taskSpec}`
 }

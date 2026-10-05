@@ -4,6 +4,7 @@ import { reconcileRequestedWorkerTerminalReleases } from '../../../../orchestrat
 import { observeAntigravityRunReadiness } from '../../../../orchestration/run-capacity-state'
 import type { NativeAntigravityReadinessContext } from '../../../../../antigravity/native-readiness-launch-context'
 import { createOrchestrationWorkerReleaseHarness } from './worker-release.test-support'
+import * as completionLaunch from '../../../../orchestration/antigravity-completion-launch'
 import { agentHookServer } from '../../../../../agent-hooks/server'
 
 const READY_WAIT = {
@@ -22,6 +23,7 @@ describe('Antigravity orchestration worker lifecycle', () => {
   async function readyFixture(): Promise<void> {
     h.setup()
     vi.spyOn(agentHookServer, 'buildPtyEnv').mockReturnValue({ ORCA_AGENT_HOOK_PORT: '12345' })
+    vi.spyOn(completionLaunch, 'registerAntigravityWorkerStop').mockResolvedValue()
     const context: NativeAntigravityReadinessContext = {
       runId: h.activeRunId,
       generation: h.db.getRunRaw(h.activeRunId)?.consumer_generation ?? 0,

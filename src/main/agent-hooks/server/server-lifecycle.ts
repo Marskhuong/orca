@@ -1,4 +1,5 @@
 import { handleAntigravityCompletionHttp } from '../antigravity-completion-capability'
+import { observeAntigravityCompletionHook } from '../antigravity-stop-completion'
 import { parsePaneKey } from '../../../shared/stable-pane-id'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomUUID } from 'node:crypto'
@@ -148,6 +149,13 @@ export abstract class AgentHookServerLifecycle extends AgentHookServerRuntimeEnv
           this.recordCurrentAuthorityObservation(event)
           const enriched = this.applyNormalizedStatus(event, normalized.onAccepted)
           if (enriched) {
+            if (source === 'antigravity' && statusDisposition === 'accept') {
+              try {
+                observeAntigravityCompletionHook(aliasedBody)
+              } catch (error) {
+                console.warn('[antigravity-completion] Stop hook refused', error)
+              }
+            }
             this.checkAgentPresenceAfterHook(event, enriched)
             this.scheduleAssistantMessageRetry(source, aliasedBody, enriched)
             this.scheduleTranscriptPoll(source, aliasedBody, enriched)

@@ -217,17 +217,32 @@ MCP JSON, empty settings, and other malformed JSON still refuse observation.
 
 ## Governed Antigravity completion
 
-Native governed Antigravity workers receive a completion-only command at launch.
-It uses the existing loopback hook listener and does not discover or read runtime
-metadata. A random in-memory capability authorizes one completion for the exact
-runtime, dispatch, terminal and process incarnation. It expires after five minutes
-on either wall or monotonic time; restart, reuse, identity changes and settled
-workers fail closed. The capability is consumed before canonical `worker_done`
-settlement, including ambiguous failures. There is no automatic retry or renewal.
+Native governed Antigravity workers finish through the official Stop hook, not a
+model-invoked shell command. The existing managed hook reads provider JSON from
+stdin and posts to the existing authenticated loopback hook listener. A private
+runtime registration binds the exact launch-token digest, pane, process, runtime,
+model and workspace. Its first live PreInvocation binds one conversation UUID;
+Stop cannot bind an unknown conversation, and replay/remote status never redeems
+completion authority. No conversation databases are scanned for this mapping.
 
-The bundled CLI's `orchestration complete` command accepts only the launch-scoped
-loopback endpoint, identities, capability, outcome and bounded summary. It cannot
-query metadata or invoke generic runtime RPC. Existing sandbox permissions remain
-unchanged; a provider sandbox denial must be reported rather than bypassed.
-Non-Antigravity completion behavior is unchanged. Tasks exceeding the capability
-TTL need coordinator intervention; this path does not grant lasting authority.
+Installed CLI 1.2.16 was captured emitting `terminationReason: "NO_TOOL_CALL"`,
+`fullyIdle: true`, empty error, exact model and singleton workspace on successful
+inference. That installed reason differs from the official docs' `model_stop`
+example. Only this verified normal reason with fullyIdle true and no error settles
+succeeded. Explicit errors and documented exhausted-step termination settle failed;
+unknown reasons, malformed/missing context and non-idle Stops remain unsettled.
+Provider loop completion proves termination, not the correctness of task results.
+
+The registration and existing 256-bit completion capability are private in-memory
+and one-shot, with five-minute wall/monotonic expiry. Restart invalidates both;
+process/launch/dispatch changes and already-settled workers fail closed. Redemption
+consumes authority before the existing atomic worker_done settlement, including
+ambiguous failures. There is no fallback shell command, automatic retry or renewal.
+Tasks exceeding TTL need coordinator intervention.
+
+The verification hook inherited the launch environment and contacted loopback
+under a sandboxed inference without model tools. A one-second configured timeout
+killed a deliberately sleeping verification hook. Existing managed hooks keep their
+ten-second provider timeout, bounded stdin reader and 1.5-second curl timeout.
+This integration adds no new process, metadata read, bearer command-line argument,
+RPC surface or permission grant; sandbox and non-Antigravity behavior are unchanged.
