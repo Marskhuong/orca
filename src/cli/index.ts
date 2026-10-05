@@ -29,6 +29,7 @@ const COMMAND_PATHS = COMMAND_SPECS.flatMap((spec) => specPaths(spec))
 
 function shouldIgnoreRemoteSelection(commandPath: string[]): boolean {
   return (
+    commandPath[0] === 'jev' ||
     commandPath[0] === 'account' ||
     commandPath[0] === 'artifacts' ||
     commandPath[0] === 'environment' ||
