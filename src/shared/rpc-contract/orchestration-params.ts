@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ParallelWorkReason } from '../orchestration-lead-yield'
 import {
   OptionalBoolean,
   OptionalFiniteNumber,
@@ -44,6 +45,7 @@ export const CheckParams = z
     compatibilityQuestionAck: OptionalString,
     compatibilityCliCommand: z.enum(['orca', 'orca-ide', 'orca-dev']).optional(),
     run: OptionalString,
+    parallelWorkReason: ParallelWorkReason,
     wait: OptionalBoolean,
     timeoutMs: OptionalFiniteNumber
   })
@@ -95,6 +97,7 @@ export const TaskListParams = z.object({
 })
 
 export const DispatchParams = z.object({
+  parallelWorkReason: ParallelWorkReason,
   task: requiredString('Missing --task'),
   // Why: --to is optional so --dry-run can preview without a target; the handler enforces presence before any side-effecting work.
   to: OptionalString,

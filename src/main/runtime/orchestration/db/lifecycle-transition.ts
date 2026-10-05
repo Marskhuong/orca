@@ -1,3 +1,4 @@
+import { clearSettledLeadYieldExpectation } from '../lead-yield-evidence-write'
 import type Database from '../../../sqlite/sync-database'
 import { OrchestrationError } from '../orchestration-error'
 import type { OrchestrationDb } from './orchestration-db'
@@ -192,6 +193,12 @@ export function transitionLifecycleWithDb(
     )
   }
 
+  if (
+    params.entity === 'dispatch' &&
+    ['completed', 'failed', 'circuit_broken'].includes(params.to)
+  ) {
+    clearSettledLeadYieldExpectation(db, params.id)
+  }
   return { changed: true }
 }
 

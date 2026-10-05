@@ -1,3 +1,4 @@
+import { expectLeadYield } from '../../../../orchestration/lead-yield-guard'
 import { defineMethod } from '../../../core'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import {
@@ -172,6 +173,15 @@ export const ORCHESTRATION_DISPATCH_METHODS = [
         creator: resolveDispatchCreator(runtime, params.from, orchestrationCaller),
         maxDepth: runtime.getNestedWorkerMaxDepth()
       })
+
+      if (params.inject) {
+        expectLeadYield(
+          db,
+          ctx.id,
+          resolveDispatchCreator(runtime, params.from, orchestrationCaller),
+          params.parallelWorkReason
+        )
+      }
 
       // Why: built after ctx so dispatchId is the real ctx.id, letting heartbeats attribute liveness to a specific dispatch context, not just a task.
       const preamble = buildDispatchPreamble({

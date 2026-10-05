@@ -1,3 +1,4 @@
+import { readLeadYieldGuard } from '../../../../orchestration/lead-yield-guard'
 import { ROUTE_DISPATCH_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-route-dispatch'
 import { RUN_CAPACITY_RUNTIME_CAPABILITY } from '../../../../../../shared/orchestration-run-capacity'
 import { createCapacityReadyOrchestrationDb } from '../../../../orchestration/capacity-ready-db.test-support'
@@ -29,6 +30,7 @@ describe('federated worker start receipt validation', () => {
       coordinatorHandle: 'term_coord',
       coordinatorPaneKey: 'tab_coord:leaf_coord'
     })
+    vi.spyOn(runtime, 'getTerminalPaneKey').mockReturnValue('tab_coord:leaf_coord')
     const task = db.createTask({ spec: 'remote work', runId: run.id })
     vi.spyOn(runtime, 'resolveOrchestrationWorkerServer').mockReturnValue({
       environmentId: 'environment_remote',
@@ -89,6 +91,9 @@ describe('federated worker start receipt validation', () => {
       remote_worktree_id: null,
       remote_terminal_handle: null
     })
+    expect(readLeadYieldGuard(db, run.id)).toEqual([
+      expect.objectContaining({ dispatch_id: result.dispatchId, lead_yield_expected: 1 })
+    ])
     for (const call of remoteCall.mock.calls) {
       expect(call[5]).toEqual({
         ...(call[1] === 'orchestration.federationAttachStart' ? { contractVerified: true } : {}),

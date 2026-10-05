@@ -1,3 +1,4 @@
+import { parallelWorkEvidence } from './lead-yield-evidence'
 import type { CommandHandler } from '../../dispatch'
 import { printResult } from '../../format'
 import { getOptionalStringFlag, getRequiredStringFlag } from '../../flags'
@@ -38,6 +39,7 @@ export const ORCHESTRATION_DISPATCH_HANDLER: Record<string, CommandHandler> = {
       run: getOptionalStringFlag(flags, 'run'),
       to,
       from,
+      parallelWorkReason: await parallelWorkEvidence(flags, client),
       inject: flags.has('inject') ? true : undefined,
       ...(route ? { route } : {}),
       dryRun,

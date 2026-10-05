@@ -4,6 +4,16 @@ import { ORCHESTRATION_RUN_CAPACITY_COMMAND_SPECS } from './orchestration-run-ca
 export const ORCHESTRATION_RUN_COMMAND_SPECS: CommandSpec[] = [
   ...ORCHESTRATION_RUN_CAPACITY_COMMAND_SPECS,
   {
+    path: ['orchestration', 'yield'],
+    summary: 'Record Lead yield after dispatch',
+    usage: 'orca orchestration yield [--run <run_id>] [--from <handle>] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'run', 'from'],
+    identityFlagRoles: { from: 'caller' },
+    notes: [
+      'Records lifecycle evidence only. End the Lead turn after this receipt; the runtime does not suspend or control execution.'
+    ]
+  },
+  {
     path: ['orchestration', 'run-create'],
     summary: 'Create and bind a lightweight orchestration Run',
     usage:

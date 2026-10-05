@@ -138,6 +138,7 @@ export async function startLocalWorker(args: {
     run
   })
   const started = db.createStartingWorkerDispatch({
+    parallelWorkReason: params.parallelWorkReason,
     creator: resolveDispatchCreator(runtime, params.from, callerSession),
     maxDepth: runtime.getNestedWorkerMaxDepth(),
     taskId: existingTask?.id,

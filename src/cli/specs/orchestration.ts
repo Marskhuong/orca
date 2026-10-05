@@ -66,7 +66,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'check'],
     summary: "Check this agent's messages",
     usage:
-      'orca orchestration check [--terminal <handle>] [--run <run_id>] [--ack <delivery_id>] [--unread | --peek | --all] [--types <type,...>] [--format] [--wait] [--timeout-ms <n>] [--retry-request <id>] [--json]\n' +
+      'orca orchestration check [--terminal <handle>] [--run <run_id>] [--ack <delivery_id>] [--unread | --peek | --all] [--types <type,...>] [--format] [--wait] [--timeout-ms <n>] [--retry-request <id>] [--parallel-work-reason <text>] [--json]\n' +
       "  default: return the bound Run's oldest unacknowledged FIFO batch.\n" +
       '  --ack: acknowledge the prior whole batch before checking/waiting.\n' +
       '  --peek: return only unread messages without marking them read.\n' +
@@ -77,6 +77,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
       '          messages; `_heartbeat` remains as a deprecated compatibility alias.\n' +
       '          Filter with `jq "select(._keepalive|not)"` when merging streams.',
     allowedFlags: [
+      'parallel-work-reason',
       ...GLOBAL_FLAGS,
       'terminal',
       'run',
@@ -157,8 +158,9 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'dispatch'],
     summary: 'Dispatch a task to a terminal',
     usage:
-      'orca orchestration dispatch --task <task_id> --to <handle> [--from <handle>] [--run <run_id>] [--route <route_identity>] [--inject] [--dry-run] [--return-preamble] [--retry-request <id>] [--json]',
+      'orca orchestration dispatch --task <task_id> --to <handle> [--from <handle>] [--run <run_id>] [--route <route_identity>] [--inject] [--dry-run] [--return-preamble] [--retry-request <id>] [--parallel-work-reason <text>] [--json]',
     allowedFlags: [
+      'parallel-work-reason',
       ...GLOBAL_FLAGS,
       'task',
       'to',

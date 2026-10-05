@@ -44,14 +44,15 @@ type CallerParam = 'from' | 'terminal' | 'callerTerminalHandle'
 /**
  * Every method that consults caller identity, and the param it names its caller in. This list is
  * the contract: a method that starts reading caller identity is added here with its own test.
- * Methods not listed carry no caller identity for any caller; a session claim on them is still
- * validated, then they run exactly as they do for a terminal caller.
+ * Methods without a caller param may use resolved evidence for optional observation only
+ * (workerRead); it never authorizes the read or changes its target. Session claims stay validated.
  */
 export const ORCHESTRATION_CALLER_PARAM: Readonly<Record<string, CallerParam>> = {
   'orchestration.runCreate': 'from',
   'orchestration.runCapacityRecord': 'from',
   'orchestration.runUse': 'from',
   'orchestration.runCurrent': 'from',
+  'orchestration.yield': 'from',
   'orchestration.check': 'terminal',
   'orchestration.send': 'from',
   'orchestration.reply': 'from',

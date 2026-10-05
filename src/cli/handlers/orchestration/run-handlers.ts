@@ -10,6 +10,18 @@ import { callOrchestrationMutation } from './mutation-request'
 import { resolveCoordinatorTerminalHandle } from './terminal-identity'
 
 export const ORCHESTRATION_RUN_HANDLERS: Record<string, CommandHandler> = {
+  'orchestration yield': async ({ flags, client, cwd, json }) => {
+    const result = await client.call<{ yieldRecorded: boolean }>('orchestration.yield', {
+      from: await resolveCoordinatorTerminalHandle(flags, cwd, client),
+      run: getOptionalStringFlag(flags, 'run')
+    })
+    printResult(result, json, (value) =>
+      value.yieldRecorded
+        ? 'Lead yield recorded. End this turn and resume on a worker event.'
+        : 'Lead yield evidence unavailable; no lifecycle action was changed.'
+    )
+  },
+
   'orchestration run-create': async ({ flags, client, cwd, json }) => {
     const from = await resolveCoordinatorTerminalHandle(flags, cwd, client)
     const result = await callOrchestrationMutation<{

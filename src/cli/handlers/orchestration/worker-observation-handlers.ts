@@ -1,3 +1,4 @@
+import { parallelWorkEvidence } from './lead-yield-evidence'
 import type { CommandHandler } from '../../dispatch'
 import { printResult } from '../../format'
 import {
@@ -67,6 +68,7 @@ export const ORCHESTRATION_WORKER_OBSERVATION_HANDLERS: Record<string, CommandHa
       {
         dispatch: getRequiredStringFlag(flags, 'dispatch'),
         cursor,
+        parallelWorkReason: await parallelWorkEvidence(flags, client),
         limit: getOptionalPositiveIntegerFlag(flags, 'limit'),
         source: source as OrchestrationWorkerReadSource | undefined
       }

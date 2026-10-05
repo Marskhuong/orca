@@ -1,3 +1,4 @@
+import { parallelWorkEvidence } from './lead-yield-evidence'
 import type { CommandHandler } from '../../dispatch'
 import { printResult } from '../../format'
 import { getOptionalStringFlag } from '../../flags'
@@ -56,6 +57,7 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       nextCommands?: string[]
     }>(client, flags, 'orchestration.workerStart', {
       task,
+      parallelWorkReason: await parallelWorkEvidence(flags, client),
       ...(spec ? { spec } : {}),
       ...(taskTitle ? { taskTitle } : {}),
       ...(deps ? { deps } : {}),

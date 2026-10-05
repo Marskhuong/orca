@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ParallelWorkReason } from '../orchestration-lead-yield'
 import { OptionalFiniteNumber, OptionalString, requiredString } from './rpc-param-primitives'
 
 export const OptionalWorkerLaunchPreference = z
@@ -10,6 +11,7 @@ export const OptionalWorkerLaunchPreference = z
 
 export const WorkerStartParams = z
   .object({
+    parallelWorkReason: ParallelWorkReason,
     task: OptionalString,
     spec: OptionalString,
     taskTitle: OptionalString,

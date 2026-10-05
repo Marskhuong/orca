@@ -1,3 +1,4 @@
+import { LEAD_YIELD_GUARD_SCHEMA_SQL } from '../../lead-yield-guard'
 import type { OrchestrationDb } from '../orchestration-db'
 import { createCoreTablesSql } from './create-core-tables-sql'
 import { createGraphTablesSql } from './create-graph-tables-sql'
@@ -9,6 +10,7 @@ export function createTables(this: OrchestrationDb): void {
   this.createMailboxDeliveryIndexesIfPossible()
   this.db.exec(DERIVED_DELIVERY_SCHEMA_SQL)
   this.db.exec(RUN_CAPACITY_SCHEMA_SQL)
+  this.db.exec(LEAD_YIELD_GUARD_SCHEMA_SQL)
 }
 
 export type CreateTablesMethods = {

@@ -1,3 +1,4 @@
+import { readLeadYieldGuard } from '../../../../orchestration/lead-yield-guard'
 import { defineMethod } from '../../../core'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { assertCallerHandleMatchesEvidence, resolveOrchestrationCaller } from './run-scope'
@@ -140,7 +141,10 @@ export const ORCHESTRATION_RUN_METHODS = [
       if (!run) {
         throw new OrchestrationError('run_not_found', `Run ${params.id} was not found.`)
       }
-      return { run: exposeRun(run) }
+      return {
+        run: exposeRun(run),
+        yieldGuard: readLeadYieldGuard(runtime.getOrchestrationDb(), run.id)
+      }
     }
   })
 ]

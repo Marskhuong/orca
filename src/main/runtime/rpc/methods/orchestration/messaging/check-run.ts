@@ -1,3 +1,7 @@
+import {
+  observeLeadYieldAction,
+  recordLeadYieldWake
+} from '../../../../orchestration/lead-yield-guard'
 import type { MessageRow, MessageType, OrchestrationDb } from '../../../../orchestration/db'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
 import type { RpcContext } from '../../../core'
@@ -132,8 +136,22 @@ export async function checkRunMailbox(args: {
       : {})
   })
   const readPeek = () => db.getUnreadRunMailbox(run.id, 100, typeFilter)
-  const readDelivery = (wakeTypes?: MessageType[]) =>
-    db.getOrCreateRunDelivery({ runId: run.id, consumerGeneration: generation, wakeTypes })
+  const readDelivery = (wakeTypes?: MessageType[]) => {
+    const delivered = db.getOrCreateRunDelivery({
+      runId: run.id,
+      consumerGeneration: generation,
+      wakeTypes
+    })
+    if (delivered) {
+      recordLeadYieldWake(
+        db,
+        run,
+        delivered.delivery.id,
+        delivered.messages.map((message) => message.type)
+      )
+    }
+    return delivered
+  }
   let peeked = params.peek ? readPeek() : []
   if (params.peek && peeked.length > 0) {
     return peekResult(peeked)
@@ -205,6 +223,9 @@ export async function checkRunMailbox(args: {
     )
   }
   if (waitResult === 'timed_out') {
+    if (!params.ack) {
+      observeLeadYieldAction(db, run, 'check_wait', params.parallelWorkReason)
+    }
     if (params.peek) {
       return { ...peekResult([]), timedOut: true, cancelled: false, connectionLost: false }
     }
@@ -241,9 +262,15 @@ export async function checkRunMailbox(args: {
   }
   if (params.peek) {
     peeked = readPeek()
+    if (peeked.length === 0 && !params.ack) {
+      observeLeadYieldAction(db, run, 'check_wait', params.parallelWorkReason)
+    }
     return { ...peekResult(peeked), timedOut: false, cancelled: false, connectionLost: false }
   }
   current = readDelivery(typeFilter)
+  if (!current && !params.ack) {
+    observeLeadYieldAction(db, run, 'check_wait', params.parallelWorkReason)
+  }
   return {
     runId: run.id,
     deliveryId: current?.delivery.id ?? null,

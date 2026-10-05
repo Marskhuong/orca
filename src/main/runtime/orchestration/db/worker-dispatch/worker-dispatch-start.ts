@@ -1,3 +1,4 @@
+import { expectLeadYield } from '../../lead-yield-guard'
 import type { DispatchContextRow, TaskRow, WorkerDispatchRow } from '../../types'
 import { OrchestrationError } from '../../orchestration-error'
 import { ensureMutationReceiptCapacity } from '../../mutation-receipt-capacity'
@@ -13,6 +14,7 @@ import { requireRunCapacity } from '../../run-capacity-state'
 export function createStartingWorkerDispatch(
   this: OrchestrationDb,
   params: {
+    parallelWorkReason?: string
     taskId?: string
     taskSpec?: string
     taskRunId?: string
@@ -180,6 +182,7 @@ export function createStartingWorkerDispatch(
       to: 'dispatched',
       projection: { result: null, completed_at: null }
     })
+    expectLeadYield(this, id, params.creator, params.parallelWorkReason)
     this.db.exec('COMMIT')
     this.hasAnyDispatchContextsCache = true
     return {

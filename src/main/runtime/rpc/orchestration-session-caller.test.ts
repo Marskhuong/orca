@@ -58,6 +58,7 @@ const MINIMAL_PARAMS: Readonly<Record<string, Record<string, unknown>>> = {
   'orchestration.runCapacityRecord': { id: 'run_missing', evidence: capacityEvidence() },
   'orchestration.runUse': { id: 'run_missing' },
   'orchestration.runCurrent': {},
+  'orchestration.yield': {},
   'orchestration.check': {},
   'orchestration.send': { subject: 's', to: 'term_worker' },
   'orchestration.reply': { id: 'msg_missing', body: 'b' },
@@ -97,8 +98,8 @@ describe('orchestration session callers at the dispatch entry', () => {
       })
       .sort()
 
-    expect(registry.size).toBe(45)
-    expect(partyNaming).toHaveLength(28)
+    expect(registry.size).toBe(46)
+    expect(partyNaming).toHaveLength(29)
     expect(partyNaming).toEqual(
       [
         ...Object.entries(ORCHESTRATION_CALLER_PARAM).map(

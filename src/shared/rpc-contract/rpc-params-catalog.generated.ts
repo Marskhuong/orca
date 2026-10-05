@@ -394,7 +394,8 @@ import {
   RunCurrentParams,
   RunListParams,
   RunShowParams,
-  RunUseParams
+  RunUseParams,
+  RunYieldParams
 } from './orchestration-runs-params'
 import { WorkerDispatchParams, WorkerReadParams } from './orchestration-worker-control-params'
 import { OrchestrationWorkerTerminalUserInputParams } from './orchestration-worker-release-params'
@@ -1039,6 +1040,7 @@ export const RPC_PARAMS_BY_METHOD = {
   'orchestration.workerStart': WorkerStartParams,
   'orchestration.workerStop': WorkerDispatchParamsOfOrchestrationWorkerStopParams,
   'orchestration.workerTerminalUserInput': OrchestrationWorkerTerminalUserInputParams,
+  'orchestration.yield': RunYieldParams,
   'pairing.getEndpoints': PairingGetEndpointsParamsSchema,
   'pairing.provisionRelay': PairingProvisionRelayParamsSchema,
   'plugins.consent': pluginConsentRequestSchema,

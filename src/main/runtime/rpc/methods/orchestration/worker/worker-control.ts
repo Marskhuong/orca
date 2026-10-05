@@ -1,3 +1,8 @@
+import {
+  observeLeadYieldAction,
+  isProcessingRunDelivery
+} from '../../../../orchestration/lead-yield-guard'
+import { resolveOrchestrationCaller } from '../runs/run-scope'
 import { contextOnlyAbandonWarning } from '../../../../orchestration/context-only-dispatch-release'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { defineMethod } from '../../../core'
@@ -79,8 +84,33 @@ export const ORCHESTRATION_WORKER_CONTROL_METHODS = [
   defineMethod({
     name: 'orchestration.workerRead',
     params: WorkerReadParams,
-    handler: async (params, { runtime }) => {
+    handler: async (
+      params,
+      { runtime, orchestrationCaller, orchestrationCompatibilityEvidence }
+    ) => {
       const db = runtime.getOrchestrationDb()
+      const attested = runtime.verifyOrchestrationCompatibilityCaller(
+        orchestrationCompatibilityEvidence
+      )
+      if (orchestrationCaller || attested) {
+        const caller = resolveOrchestrationCaller(runtime, {
+          callerTerminalHandle: attested?.terminalHandle ?? 'unknown',
+          callerSession: orchestrationCaller,
+          callerAuthority: attested ?? undefined,
+          evidenceAssertedByCaller: true
+        })
+        const run = caller ? db.getCurrentRunForCoordinator(caller) : undefined
+        const target = db.getDispatchContextById(params.dispatch)
+        if (
+          run &&
+          target?.run_id === run.id &&
+          ['pending', 'dispatched'].includes(target.status) &&
+          params.cursor === undefined &&
+          !isProcessingRunDelivery(db, run)
+        ) {
+          observeLeadYieldAction(db, run, 'worker_poll', params.parallelWorkReason, params.dispatch)
+        }
+      }
       const federated = db.getFederatedDispatch(params.dispatch)
       if (federated) {
         const server = resolvePinnedFederatedServer(runtime, federated)

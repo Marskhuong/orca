@@ -1,3 +1,4 @@
+import { parallelWorkEvidence } from './lead-yield-evidence'
 import type { CommandHandler } from '../../dispatch'
 import { printResult } from '../../format'
 import { getOptionalStringFlag } from '../../flags'
@@ -50,6 +51,7 @@ export const ORCHESTRATION_CHECK_HANDLER: Record<string, CommandHandler> = {
     try {
       result = await callOrchestrationMutation<CheckResult>(client, flags, 'orchestration.check', {
         terminal,
+        parallelWorkReason: await parallelWorkEvidence(flags, client),
         terminalPaneKey: paneKey || undefined,
         // Why: old runtimes degrade peek to non-consuming all mode instead of destructive mark-read.
         unread: flags.has('unread') ? true : peek ? false : undefined,

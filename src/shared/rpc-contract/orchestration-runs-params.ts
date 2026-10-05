@@ -7,6 +7,11 @@ export const RunCreateParams = z.object({
   from: requiredString('Missing coordinator terminal')
 })
 
+export const RunYieldParams = z.object({
+  from: requiredString('Missing coordinator terminal'),
+  run: OptionalString
+})
+
 export const RunUseParams = z.object({
   id: requiredString('Missing --id'),
   from: requiredString('Missing coordinator terminal'),

@@ -1,3 +1,4 @@
+import { ORCHESTRATION_LEAD_YIELD_METHODS } from './orchestration/runs/lead-yield'
 import { ORCHESTRATION_RUN_METHODS } from './orchestration/runs/runs'
 import { ORCHESTRATION_RUN_CAPACITY_METHODS } from './orchestration/runs/run-capacity-methods'
 import { ORCHESTRATION_WORKER_METHODS } from './orchestration/worker/worker-methods'
@@ -14,6 +15,7 @@ import { ORCHESTRATION_CALLER_METHODS } from './orchestration/caller-show'
 
 export const ORCHESTRATION_METHODS = [
   ...ORCHESTRATION_RUN_METHODS,
+  ...ORCHESTRATION_LEAD_YIELD_METHODS,
   ...ORCHESTRATION_RUN_CAPACITY_METHODS,
   ...ORCHESTRATION_WORKER_METHODS,
   ...ORCHESTRATION_FEDERATION_METHODS,
