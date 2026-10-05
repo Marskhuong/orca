@@ -1,3 +1,4 @@
+import { handleAntigravityCompletionHttp } from '../antigravity-completion-capability'
 import { parsePaneKey } from '../../../shared/stable-pane-id'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { randomUUID } from 'node:crypto'
@@ -63,6 +64,9 @@ export abstract class AgentHookServerLifecycle extends AgentHookServerRuntimeEnv
       this.ownerStateInitialized = true
     }
     const handleRequest = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
+      if (await handleAntigravityCompletionHttp(req, res)) {
+        return
+      }
       if (req.method !== 'POST') {
         res.writeHead(404)
         res.end()

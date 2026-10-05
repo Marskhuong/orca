@@ -4,6 +4,25 @@ import { ORCHESTRATION_RUN_COMMAND_SPECS } from './orchestration-run-specs'
 export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
   ...ORCHESTRATION_RUN_COMMAND_SPECS,
   {
+    path: ['orchestration', 'complete'],
+    summary: 'Redeem an AGY completion-only capability',
+    usage:
+      'orca orchestration complete --dispatch-id <id> --runtime-id <id> --endpoint <scoped-url> --dispatch-capability <token> --outcome <succeeded|failed> [--summary <text>] [--json]',
+    allowedFlags: [
+      'help',
+      'json',
+      'dispatch-id',
+      'runtime-id',
+      'endpoint',
+      'dispatch-capability',
+      'outcome',
+      'summary'
+    ],
+    notes: [
+      'Uses only the one-shot capability issued to this Antigravity worker; never reads runtime metadata.'
+    ]
+  },
+  {
     path: ['orchestration', 'send'],
     summary: 'Send an inter-agent message',
     usage:

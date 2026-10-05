@@ -116,6 +116,10 @@ export async function main(
       findCommandSpec(COMMAND_SPECS, parsed.commandPath),
       parsed.flags
     )
+    if (parsed.commandPath.join(' ') === 'orchestration complete') {
+      await (await import('./antigravity-completion.js')).completeAntigravityWorker(parsed.flags)
+      return
+    }
     const RuntimeClientClass = await loadRuntimeClientClass()
     const ignoreRemoteSelection = shouldIgnoreRemoteSelection(parsed.commandPath)
     const pairingCode = ignoreRemoteSelection ? null : parsed.flags.get('pairing-code')

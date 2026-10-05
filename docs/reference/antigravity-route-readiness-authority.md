@@ -214,3 +214,20 @@ The exact global `.gemini/config/mcp_config.json` may be zero bytes: the approve
 capture succeeded with that installed optional file. Its path and empty bytes stay
 in the configuration digest; only this empty file is accepted. Nonempty malformed
 MCP JSON, empty settings, and other malformed JSON still refuse observation.
+
+## Governed Antigravity completion
+
+Native governed Antigravity workers receive a completion-only command at launch.
+It uses the existing loopback hook listener and does not discover or read runtime
+metadata. A random in-memory capability authorizes one completion for the exact
+runtime, dispatch, terminal and process incarnation. It expires after five minutes
+on either wall or monotonic time; restart, reuse, identity changes and settled
+workers fail closed. The capability is consumed before canonical `worker_done`
+settlement, including ambiguous failures. There is no automatic retry or renewal.
+
+The bundled CLI's `orchestration complete` command accepts only the launch-scoped
+loopback endpoint, identities, capability, outcome and bounded summary. It cannot
+query metadata or invoke generic runtime RPC. Existing sandbox permissions remain
+unchanged; a provider sandbox denial must be reported rather than bypassed.
+Non-Antigravity completion behavior is unchanged. Tasks exceeding the capability
+TTL need coordinator intervention; this path does not grant lasting authority.

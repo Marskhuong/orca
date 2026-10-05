@@ -57,7 +57,8 @@ export async function deliverAndSettleWorkerStartReadiness(args: {
     taskSpec: task.spec,
     coordinatorHandle: args.coordinatorHandle,
     devMode: args.devMode,
-    requestId: args.requestId
+    requestId: args.requestId,
+    agent: args.agent
   })
   effects.push({
     kind: 'dispatch_input',

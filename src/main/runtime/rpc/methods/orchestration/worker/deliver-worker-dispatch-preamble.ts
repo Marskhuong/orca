@@ -1,3 +1,7 @@
+import {
+  antigravityCompletionCommand,
+  buildAntigravityCompletionPreamble
+} from '../../../../orchestration/antigravity-completion-launch'
 import type { RuntimeTerminalSend } from '../../../../../../shared/runtime-terminal-contracts'
 import type { OrcaRuntimeService } from '../../../../orca-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
@@ -38,28 +42,37 @@ export async function deliverWorkerDispatchPreamble(args: {
   coordinatorHandle: string
   devMode: boolean | undefined
   requestId: string
+  agent?: string | null
 }): Promise<{
   prompt?: RuntimeTerminalSend['prompt']
   structuredTurnStart?: WorkerTurnStartObservation
 }> {
   const { runtime, structuredSession, terminalHandle } = args
-  const preamble = buildDispatchPreamble({
-    // Depth only. A worker is taught the same verbs whichever mode it runs in, so this must not
-    // become a second gate: resolving the caller's worktree is what lets a structured worker
-    // dispatch sub-workers exactly like a PTY one.
-    canDispatchSubWorkers: args.dispatchDepth < runtime.getNestedWorkerMaxDepth(),
-    taskId: args.taskId,
-    dispatchId: args.dispatchId,
-    taskSpec: args.taskSpec,
-    coordinatorHandle: orcaSessionIdOrHandle(args.coordinatorHandle, args.db),
-    // Its mailbox stays keyed by the handle; its commands name its Orca session ID, which binds to it.
-    workerHandle:
-      structuredSession && isOrcaSessionId(structuredSession.identity.sessionId)
-        ? formatOrcaSessionAddress(canonicalOrcaSessionId(structuredSession.identity.sessionId))
-        : terminalHandle,
-    devMode: args.devMode,
-    cliCommand: runtime.getTerminalOrchestrationCliCommand(terminalHandle)
-  })
+  const preamble =
+    args.agent === 'antigravity' && !structuredSession
+      ? buildAntigravityCompletionPreamble({
+          command: antigravityCompletionCommand(runtime, args.dispatchId),
+          taskSpec: args.taskSpec
+        })
+      : buildDispatchPreamble({
+          // Depth only. A worker is taught the same verbs whichever mode it runs in, so this must not
+          // become a second gate: resolving the caller's worktree is what lets a structured worker
+          // dispatch sub-workers exactly like a PTY one.
+          canDispatchSubWorkers: args.dispatchDepth < runtime.getNestedWorkerMaxDepth(),
+          taskId: args.taskId,
+          dispatchId: args.dispatchId,
+          taskSpec: args.taskSpec,
+          coordinatorHandle: orcaSessionIdOrHandle(args.coordinatorHandle, args.db),
+          // Its mailbox stays keyed by the handle; its commands name its Orca session ID, which binds to it.
+          workerHandle:
+            structuredSession && isOrcaSessionId(structuredSession.identity.sessionId)
+              ? formatOrcaSessionAddress(
+                  canonicalOrcaSessionId(structuredSession.identity.sessionId)
+                )
+              : terminalHandle,
+          devMode: args.devMode,
+          cliCommand: runtime.getTerminalOrchestrationCliCommand(terminalHandle)
+        })
   if (structuredSession) {
     const delivery = await sendStructuredWorkerPreamble({
       host: structuredSession.host,
