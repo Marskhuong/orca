@@ -135,7 +135,7 @@ Source-control and review changes must consider GitLab and other supported git p
 Be mindful of the user's `gh` CLI API rate limit — batch requests where possible and avoid unnecessary calls. All code, commands, and scripts must be compatible with macOS, Linux, and Windows.
 <!-- ORCA:CANONICAL_RULES:START -->
 <!-- CANONICAL_POLICY_VERSION: 1.4.1 -->
-<!-- CANONICAL_RULESET_HASH: 02dff264f3a046d83ab8fa3578ee03dd142bd4614af9d78caed329ff9eb84cbb -->
+<!-- CANONICAL_RULESET_HASH: 20bf88c9da7a87d5bac9fbfe0984d3a38c7d0387bf13539379c86a5477fa846e -->
 ## Canonical cross-project routing policy
 
 ## 1. Authority & Roles
@@ -228,9 +228,11 @@ Substantive execution by a worker, reviewer, additional agent, or delegated mode
 
 Governed dispatch evidence MUST preserve `agent identifier != model identifier` and the distinction between requested and effective routes.
 
-### CANON-R012 — Event-driven lifecycle [MUST v2]
+### CANON-R012 — Event-driven lifecycle [MUST v3]
 
 For substantive delegated execution use `classify → capacity → readiness → run-create → watchdog watch → dispatch → yield → wake/event → collect → decide → next dispatch if needed → yield → close → unwatch`. Establish governed watch before dispatch. No babysitting: no sleep/check loops, worker-output polling strategy, or CI/provider polling when an event/Watchdog path exists. Close/unwatch on completion; workers are not replaced solely because capacity changes.
+
+After a substantive Worker dispatch, Lead MUST yield by default: `Lead classify/plan → dispatch → YIELD → event/wake → Lead checkpoint → decide next action`. Repeated `orca orchestration check --wait` loops are not a compliant orchestration strategy after dispatch. Repeated bounded waits or poll-like blocking loops are not substitutes for relinquishing Lead execution. Lead MUST NOT continue overlapping research, analysis, or implementation for the same stage while the Worker owns that stage. Lead may continue parallel work (including harmless deterministic work) ONLY when it is explicitly independent of the Worker result, does not overlap Worker ownership, is useful regardless of Worker outcome, and is unlikely to create rework, duplicate research, or conflicting decisions. Lead MUST state one short reason why the parallel work is safe. If these conditions are not clearly met, Lead MUST yield.
 
 ## 10. Failure / UNKNOWN / Retry / Fallback
 
