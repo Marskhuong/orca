@@ -133,3 +133,177 @@ Source-control and review changes must consider GitLab and other supported git p
 ## GitHub CLI Usage
 
 Be mindful of the user's `gh` CLI API rate limit — batch requests where possible and avoid unnecessary calls. All code, commands, and scripts must be compatible with macOS, Linux, and Windows.
+<!-- ORCA:CANONICAL_RULES:START -->
+<!-- CANONICAL_POLICY_VERSION: 1.4.1 -->
+<!-- CANONICAL_RULESET_HASH: 02dff264f3a046d83ab8fa3578ee03dd142bd4614af9d78caed329ff9eb84cbb -->
+## Canonical cross-project routing policy
+
+## 1. Authority & Roles
+
+### CANON-R001 — Authority and Lead role [MUST v2]
+
+PO/user retains final authority. Lead is a ROLE, not a model. Changing the model assigned to Lead MUST NOT change orchestration semantics. Workers do not orchestrate Workers. Project-local policy may only narrow canon; each project remains authoritative for its product/domain rules.
+
+### CANON-R013 — Worker topology [SHOULD v1]
+
+Default worker topology is `Lead → Worker → Lead checkpoint → Worker`.
+
+### CANON-R011 — Watchdog boundary [MUST v1]
+
+Watchdog authority is limited to `observe → reconcile → classify → wake/surface`. It has no coordinator, product, or model-selection authority.
+
+### CANON-R017 — Lead fallback [MUST v1]
+
+Lead fallback requires `LEAD_FALLBACK_REASON=<reason>`. A fallback Lead still uses cheapest capable workers.
+
+## 2. Governed Agent Pool
+
+### CANON-R030 — Governed Agent Pool [MUST v1]
+
+The current governed agent pool is exactly Codex / GPT, Claude Local, OpenCode, and Antigravity / AGY. Pool membership determines which agent surfaces may be automatically dispatched, not their task capability or concrete model mapping. Capability lanes determine capability; runtime maps them to concrete models without exact-version binding. Only pool members may enter automatic worker/reviewer dispatch; membership alone does not establish capability, eligibility, capacity authorization, or readiness. Adding or removing a surface is a durable PO-approved canonical change.
+
+## 3. Execution Mode: Lead vs Tool vs Worker
+
+### CANON-R002 — Execution mode before routing [MUST v4]
+
+Choose execution mode BEFORE routing: Direct Lead, Tool, or Worker. Worker-first is not worker-mandatory. Direct Lead is allowed for small, bounded, local, deterministic work where dispatch overhead is disproportionate. Trivial work needs no `DIRECT_EXECUTION_REASON`; substantive direct work or possible bypass requires `DIRECT_EXECUTION_REASON=<reason>` explaining the bounded scope and overhead. Direct Lead MUST NOT bypass failed dispatch, readiness refusal, provider failure, failed/missing capacity handshake, failed Watchdog registration, or independent review (`CANON-R027`). Tool mode uses sufficient deterministic/specialist tools before LLM dispatch; tools provide evidence, caller owns the task. Only substantive delegated agent work enters governed worker routing/lifecycle. Read-only work, trivial initialization, tiny direct Lead work, deterministic tools, and Jev tool calls do not require worker capacity/readiness gates merely because a Run exists.
+
+## 4. Tool Pool & Jev
+
+### CANON-R031 — Tool Pool and Jev [MUST v1]
+
+Use deterministic/specialist tools when sufficient before dispatching an LLM. Jev is a bounded structured-decision tool exposed through the certified surface `orca jev decide`. Consider Jev before dispatching an LLM solely to make the same bounded predetermined-schema decision: classification, yes/no, finite choice, scoring/rating, guardrail/policy check, structured evaluation. Exclude code/repo work, architecture, free-form research/synthesis, arbitrary prose/docs, Lead decisions, and generic independent review. Jev is NOT an agent, Worker, Reviewer, Lead, terminal/session route, or `RUN_ROUTING_POSTURE` route. Its output is evidence; the caller owns the next action. Jev failure/timeout permits no automatic retry or worker fallback. Usage/cost is tool accounting/observability, not worker-route capacity. Current balance, model, pricing, credentials, and spend stay outside canon.
+
+## 5. Task Classification & Capability Lanes
+
+### CANON-R022 — Capability lane baseline [MUST v3]
+
+Classify work by capability; lanes are not immutable provider/model bindings. Runtime maps lanes to concrete models (`CANON-R020`); lanes do not bind the Lead role (`CANON-R001`). (1) Routine/mechanical — no named profile: mechanical edits, deterministic refactor, boilerplate, straightforward tests, parsing/extraction, routine doc transforms, repetitive clear-rule changes and small implementation with deterministic acceptance. It surfaces ambiguity as `OPEN` or `CONFLICT`, never self-promotes to Lead, and is not primary consequential reviewer without demonstrated review capability. (2) Diagnostic/reasoning/bounded review — profile may be DeepSeek-class or equivalent: debugging, root cause, adversarial inspection, bounded technical reasoning, repo analysis, qualified technical review; do not use it for routine work the routine lane can do. (3) Substantial implementation — profile GPT/Codex-class or equivalent: complex/multi-file coding, integration-heavy and architectural implementation. (4) High-value cognition — profile Claude-class or equivalent: source-heavy research, legal/tax synthesis, ambiguous requirements, architecture reasoning, high-value integration judgment; not default for routine edits or basic debugging. Consider every prima facie capable pool member, subject to eligibility. Risk raises rigor, not lane tier (`CANON-R003`). Lanes create no quota or authority; preserving scarce capacity MUST NOT be treated as `PRESERVED`.
+
+## 6. Route Selection — Cheapest Capable + Eligible
+
+### CANON-R004 — Cheapest capable and eligible first [MUST v3]
+
+For delegated execution, build the candidate set from task capability (`CANON-R022`), not reputation or Lead preference. Consider every prima facie capable member of the governed pool (`CANON-R030`). Use the cheapest capable + eligible route first. A stronger, more expensive, or available route alone is no justification. Escalation needs evidence that the cheaper route cannot perform the work or a specific capability requirement; normal cheapest-capable selection needs no verbose justification.
+
+### CANON-R005 — Intentional cheaper-route bypass [MUST v3]
+
+Record `CHEAPER_ROUTE_BYPASS_REASON=<specific capability gap>` only when intentionally skipping a cheaper capable + eligible route, including a prima facie capable routine lane. The reason must substantiate the bypass. Importance, high risk, stronger is safer, reputation, availability alone, reviewer preference, faster, convenience, capacity-share or allocation balancing are not justification.
+
+### CANON-R016 — Compatibility escalation accounting [MUST v3]
+
+`SOL_ESCALATION_REASON=<specific capability requirement>` is retained only for runtime compatibility accounting where a high-tier escalation requires it. This does not bind generic routing to a named model or exact version. Capability and eligibility govern selection; existence, availability alone, importance, high risk, stronger is safer, and Lead preference do not justify escalation. Merely holding the Lead role does not require this field (`CANON-R001`, `CANON-R017`).
+
+## 7. Risk vs Complexity vs Model Strength
+
+### CANON-R003 — Risk and complexity separation [MUST v1]
+
+`RISK != COMPLEXITY != MODEL STRENGTH`. Risk controls rigor; complexity and capability control model/route. High consequence does not mean high complexity: high-risk mechanical work may use a cheap bounded worker with stricter testing and review.
+
+## 8. Capacity & Readiness
+
+### CANON-R024 — Run-start capacity handshake [MUST v2]
+
+Before the first substantive delegated agent dispatch in a new Run, Lead MUST complete a run-start capacity handshake: (1) use the latest shared runtime capacity snapshot (Meter/Watchdog) when it is fresh enough; (2) if it is missing or stale, request at most one bounded refresh; (3) if the refresh fails, use the last-known snapshot only while it is within the configured acceptable stale window; otherwise record capacity observation as `UNKNOWN` rather than guessing. Freshness and stale windows are runtime configuration, not canonical values. Lead MUST NOT poll providers, loop refreshes, or block trivial non-substantive initialization on quota discovery (`CANON-R007`, `CANON-R012`). The snapshot is a normalized runtime record: snapshot id, observed time, source, confidence, and per route: family, route identity, availability observation, zero or more capacity dimensions (remaining amount; unit such as percent, tokens, requests, or monetary balance; window such as rolling, daily, weekly, or none; reset time), cost/balance state, runtime mapping, reservation qualifier, and observation status. Providers without a direct quota metric are represented as such and MUST NOT be forced into a synthetic percentage. A failed or missing observation is `UNKNOWN`: it MUST NOT be inferred as exhausted quota, `UNAVAILABLE`, provider failure, or task failure; availability is assessed from separate evidence (`CANON-R010`). This follows the same non-inference discipline as `OUTCOME_UNKNOWN` (`CANON-R008`) without merging the two states. Snapshot contents are runtime state and never become canonical policy (`CANON-R020`). Record `RUN_CAPACITY_SNAPSHOT_ID=<snapshot id|UNKNOWN>` (`CANON-R019`). This applies to substantive delegated agent dispatch, not read-only work, trivial initialization, tiny direct Lead work, deterministic tools, or Jev tool calls. These mode exemptions are defined in `CANON-R002`.
+
+### CANON-R007 — One bounded readiness check [MUST v2]
+
+For substantive delegated agent dispatch, perform at most one bounded readiness check (`CANON-R028`). Do not run provider discovery or polling loops. This gate does not unnecessarily apply to read-only work, trivial initialization, tiny direct Lead work, deterministic tools, or Jev calls.
+
+### CANON-R028 — Dispatch requires operational readiness [MUST v2]
+
+`AVAILABLE` capacity is not operational readiness. Substantive delegated agent dispatch requires policy eligibility (governed pool and durable local restrictions) + Run-handshake capacity authorization (`CANON-R024`) + readiness recorded `READY` by the one bounded check (`CANON-R007`). `AVAILABLE` + `NOT_READY`, `UNKNOWN`, or unrecorded readiness MUST fail closed: machine-readable refusal, zero provider side effect, zero worker creation. Readiness is runtime evidence (`CANON-R020`). Runtime/Meter/Watchdog/transport MUST NOT choose a replacement. Lead may choose the next cheapest capable + eligible route on definite refusal, recording `ROUTING_FALLBACK_REASON`; a definite refusal is not `OUTCOME_UNKNOWN`. These gates apply to substantive delegated work, not read-only work, trivial initialization, tiny direct Lead work, deterministic tools, or Jev calls.
+
+### CANON-R023 — Capacity targets are not routing quotas [MUST_NOT v1]
+
+Capacity/model-share targets are observability and portfolio-health guidance only. They MUST NOT force dispatch; force reviewer selection; cause use of an incapable or ineligible model; cause bypass of a cheaper capable + eligible lane; or trigger balancing solely to reach target percentages. Capability + eligibility always override target distribution. Numeric targets are runtime/operational configuration, not canonical policy (`CANON-R020`). Observers such as Orca Meter may measure and report route shares but gain no routing authority from target percentages (`CANON-R011`).
+
+## 9. Governed Dispatch & Lifecycle
+
+### CANON-R027 — Governed substantive execution [MUST v1]
+
+Substantive execution by a worker, reviewer, additional agent, or delegated model/provider for a governed Run MUST go through governed Orca dispatch (`CANON-R018`, `CANON-R024`). Bounded direct Lead execution remains governed by `CANON-R002` alone and is never a workaround for a missing or failed capacity handshake, unavailable governed dispatch, failed Watchdog registration, a readiness refusal (`CANON-R028`), a worker launch failure, or a provider failure; those outcomes MUST stay visible as failures or refusals and MUST NOT be converted into direct provider execution. A governed Run MUST NOT substitute an external provider or agent CLI launch, or an Orca agent-launch surface outside governed dispatch, for a worker, reviewer, or additional agent. This binds Orca-owned and Orca-controlled delegated execution; it does not restrict human shell use, and no component claims to prevent execution outside Orca's technical control boundary.
+
+### CANON-R018 — Governed dispatch evidence [MUST v1]
+
+Governed dispatch evidence MUST preserve `agent identifier != model identifier` and the distinction between requested and effective routes.
+
+### CANON-R012 — Event-driven lifecycle [MUST v2]
+
+For substantive delegated execution use `classify → capacity → readiness → run-create → watchdog watch → dispatch → yield → wake/event → collect → decide → next dispatch if needed → yield → close → unwatch`. Establish governed watch before dispatch. No babysitting: no sleep/check loops, worker-output polling strategy, or CI/provider polling when an event/Watchdog path exists. Close/unwatch on completion; workers are not replaced solely because capacity changes.
+
+## 10. Failure / UNKNOWN / Retry / Fallback
+
+### CANON-R008 — OUTCOME_UNKNOWN fail-safe [MUST_NOT v1]
+
+For `OUTCOME_UNKNOWN`, prohibit assumed failure; assumed success/completion; automatic `FAILED`; automatic `DONE`; retry; redispatch; replacement; and automatic fallback.
+
+### CANON-R009 — Silence and time are not failure [MUST_NOT v1]
+
+Do not infer failure or escalate from silence, elapsed time, or ambiguous TUI activity.
+
+### CANON-R006 — Evidence-backed fallback [MUST v2]
+
+Lead owns fallback. Actual fallback requires positive evidence of incapability, ineligibility, unavailability, or definite failure/refusal and `ROUTING_FALLBACK_REASON=<evidence-backed reason>`. No automatic retry, redispatch, replacement, or fallback. Runtime, Meter, Watchdog, and transport do not choose replacements. `OUTCOME_UNKNOWN`, silence, elapsed time, or ambiguous output provide no fallback evidence.
+
+## 11. Validation & Independent Review
+
+### CANON-R014 — Validation and consequential independent review [MUST v3]
+
+Prefer deterministic verification before additional LLM work: tests, typecheck, lint, build, schema, diff, and static checks as appropriate. Consequential changes require independent review: security, finance, auth/credentials, destructive migrations, routing/governance, production architecture, and high-impact business logic. The author MUST NOT self-review. Trivial typo, formatting, or mechanical deterministic edits do not require independent review unless project-local policy narrows further.
+
+### CANON-R015 — Cheapest capable reviewer [MUST v2]
+
+Independent review follows cheapest-qualified-capable semantics over reviewers that are qualified, independent of the author, and eligible. Author→reviewer pairings are non-binding preference hints, not permanent fixed vendor routing. Bounded technical review defaults to the diagnostic/review lane when that lane is qualified and independent. The routine lane is not primary reviewer for consequential work without demonstrated review capability. Bypassing a cheaper qualified reviewer for a premium reviewer requires `CHEAPER_ROUTE_BYPASS_REASON=<specific review capability reason>`.
+
+## 12. Routing Reasons & Accounting
+
+### CANON-R019 — Applicable routing accounting [MUST v4]
+
+Accounting supports existing fields where applicable: `REQUESTED_ROUTE`, `EFFECTIVE_ROUTE`, `ROUTE_REASON`, `CHEAPER_ROUTE_BYPASS_REASON`, `ROUTING_FALLBACK_REASON`, `DIRECT_EXECUTION_REASON`, `LEAD_FALLBACK_REASON`, `RUN_CAPACITY_SNAPSHOT_ID`, and `RUN_ROUTING_POSTURE`. `SOL_ESCALATION_REASON` is compatibility-only (`CANON-R016`). `ROUTE_REASON` SHOULD identify the task class and posture when reservation affects ordering. Bypass reasons apply only to intentional bypass, fallback reasons only to actual fallback, direct reasons only to substantive direct work or possible bypass. Normal cheapest-capable execution needs no verbose justification. Jev usage/cost is tool accounting/observability, not worker-route capacity; no new fields are required.
+
+## 13. PRESERVED / RUN_RESERVE
+
+### CANON-R010 — Availability states [MUST v3]
+
+Use availability states `AVAILABLE`, `CONSTRAINED`, `PRESERVED`, and `UNAVAILABLE`. `PRESERVED` is a hard exclusion for execution, review, fallback, and emergency routing within the explicitly instructed Run/task scope until the Product Owner or user explicitly lifts it; it MUST NOT become permanent provider state or carry into later Runs automatically. Only explicit Product Owner/user instruction sets `PRESERVED`; Lead, Meter, Watchdog, and capacity thresholds MUST NOT. Runtime capacity reservation is `RUN_RESERVE` (`CANON-R025`), not `PRESERVED`.
+
+### CANON-R025 — Capacity reservation is runtime routing state [MUST v1]
+
+Capacity reservation is runtime-only routing state. Lead derives a Run-scoped `RUN_ROUTING_POSTURE` from canonical lane semantics (`CANON-R022`), current availability evidence, the run-start snapshot (`CANON-R024`), explicit PO/user `PRESERVED` instructions, and the configured capacity-reservation policy. For each route the posture records availability state and a `RUN_RESERVE` qualifier (`NONE` or `HIGH_VALUE_ONLY`). `RUN_RESERVE` is not `PRESERVED` (`CANON-R010`): a reserved route remains `AVAILABLE` or `CONSTRAINED` and eligible. Reservation may only order a reserved route after capable + eligible non-reserved routes that are no more expensive, for work that does not genuinely require its capability. It MUST NOT make an incapable or ineligible route eligible; block a route whose capability the task genuinely requires; justify skipping a cheaper capable + eligible route or escalation (`CANON-R004`, `CANON-R005`); create fixed model quotas; alter lane semantics; or confer Product Owner authority. `UNKNOWN` capacity observation creates neither reservation nor unavailability. Reservation thresholds are runtime configuration; changing them requires no canonical change. Unlike capacity-share targets (`CANON-R023`), which are aggregate portfolio-health guidance, reservation reflects current capacity evidence for this Run. Posture applies to future dispatches only. On a meaningful capacity transition (threshold crossed, quota reset, route restored or unavailable, snapshot materially stale), Watchdog MAY detect, reconcile, classify, and wake/surface Lead; it MUST NOT choose a replacement route, rewrite the posture, kill a worker, or redispatch (`CANON-R011`). Lead then recomputes the posture for future dispatches; a running worker MUST NOT be killed, restarted, or replaced solely because capacity or reservation changed. Authority boundary: Orca Meter may own normalized capacity snapshots, token/cost accounting, balance/budget observation, historical samples, configured reservation thresholds, and reporting, but not routing, dispatch, reviewer selection, or Product Owner authority. Watchdog may own bounded refresh scheduling, staleness and transition detection, and event emission/wake, but not routing decisions, automatic provider fallback, `PRESERVED` assignment, or quota-driven worker replacement. Lead owns the posture, its interpretation alongside capability and eligibility, and the next dispatch decision. Record `RUN_ROUTING_POSTURE` (`CANON-R019`).
+
+## 14. Durable Policy vs Runtime State
+
+### CANON-R020 — Durable policy versus runtime state [MUST v4]
+
+Never encode or propagate current quota/balance, outage, temporary workhorse/provider disablement, concrete model mapping, readiness incident, KYC/billing/account state, Jev spend/balance/model/pricing/credentials, or snapshot IDs as canonical values. These are runtime state, not durable policy. Canon owns pool membership, capability and routing semantics, never observed provider state. Local overlays hold durable restrictions only and may only narrow canon; the `MODEL_CAPACITY` block is a contract, not a snapshot.
+
+### CANON-R026 — Temporary capacity is not project-local policy [MUST_NOT v1]
+
+Project-local policy outside the managed blocks holds durable routing restrictions only: manual-only or governed-readiness restrictions, compliance restrictions, project-specific capability restrictions, task-class prohibitions, and explicit long-lived Product Owner restrictions. Temporary capacity state MUST NOT be recorded as project-local policy: quota or balance levels, exhaustion, rate limits, provider outages, temporary disablement, overrides that last until re-enable or until a reset, and preservation motivated by low quota belong to the runtime capacity layer (Orca Meter snapshot, `CANON-R024`) or to the current explicit PO/user instruction for the Run (`CANON-R020`). Lead MUST NOT treat a route as `UNAVAILABLE`, exhausted, or `PRESERVED` solely because project-local text records temporary capacity state; route availability for a Run comes from explicit current PO/user instruction and the run-start handshake, while durable local restrictions continue to narrow eligibility. When such text conflicts with the handshake, Lead follows the handshake and surfaces the conflict. Stale temporary capacity text is removed only by an explicitly PO-authorized exact edit; text that cannot be classified as temporary or durable is surfaced for Product Owner review and is never silently reinterpreted or deleted.
+
+## 15. Propagation Rules
+
+### CANON-R032 — Safe deterministic propagation [MUST v1]
+
+Propagation remains deterministic, reviewable, and available as a dry run. Only registered `sync_mode=auto` projects authorize automatic managed-block commit/push after all safety, canonical-branch, cleanliness, validation, idempotence, commit-integrity, and push-verification gates pass. A failed gate defers/blocks without mutation; never force consistency. `manual` projects are report-only; `disabled` are excluded from automatic propagation. Writes are confined to `CANONICAL_RULES` and `MODEL_CAPACITY`; a missing capacity block may be installed directly after rules. Local overlays and product/domain rules remain untouched, except explicit PO-authorized registry `capacity_migrations` matching exact stale temporary capacity text once outside managed blocks (`CANON-R026`). Ambiguous text/conflicts require PO/Lead review, no mutation. Dirty/non-canonical repositories defer/block; never stash, reset, clean, force-push, switch branches, or write another checkout. Never propagate runtime provider state. `MODEL_CAPACITY` remains a contract, not a snapshot. This does not relax other Git/deployment safeguards.
+
+<!-- ORCA:CANONICAL_RULES:END -->
+
+<!-- ORCA:MODEL_CAPACITY:START -->
+<!-- MODEL_CAPACITY_CONTRACT_VERSION: 2 -->
+<!-- MODEL_CAPACITY_HASH: bb590f2067e3fa6cc46a29d8d5c49c9955e79d6a1acaafb459bf30d0bfa83251 -->
+## Model capacity (machine-managed contract)
+
+This block is a capacity contract, not a capacity observation: it never carries quota, balance, or availability values and never governs a Run on its own.
+
+- Capacity source: Orca Meter normalized snapshot (`orca-meter-capacity snapshot`; contract `capacity_snapshot.schema.json` v1).
+- Before substantive delegated agent dispatch (`CANON-R024`): read the latest snapshot once; if it is missing or stale, run at most one `orca-meter-capacity refresh`; no polling and no retry loop. A repeated Run start reuses the recorded `RUN_CAPACITY_SNAPSHOT_ID`. Read-only work, trivial initialization, tiny direct Lead work, deterministic tools, and Jev calls do not require this handshake.
+- Observation: `FRESH` (`observation_status=OBSERVED`), `STALE`, or `UNKNOWN`. Per-route state comes only from the snapshot: `AVAILABLE`, `CONSTRAINED`, `UNAVAILABLE`, or `UNKNOWN`. A failed or missing observation stays `UNKNOWN` and is never `UNAVAILABLE`.
+- Authority flow: explicit current PO/user instruction → Run capacity handshake → `RUN_ROUTING_POSTURE` (`CANON-R025`) → canonical routing rules → durable project-local restrictions, which always narrow eligibility.
+- Temporary capacity state (quota, balance, outage, until-re-enable overrides) never lives in project-local text; such text does not govern routing (`CANON-R026`).
+
+PO-preserved routes (explicit PO/user instruction only, `CANON-R010`):
+
+- none
+<!-- ORCA:MODEL_CAPACITY:END -->
