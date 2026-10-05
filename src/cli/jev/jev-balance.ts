@@ -1,7 +1,7 @@
-import { mkdir, readFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { writeFileAtomically } from '../../main/codex-accounts/fs-utils'
+import { writeSecureJsonFile } from '../../shared/secure-file'
 import { jevUsageDirectory } from './jev-usage-record'
 import { summarizeJevUsage } from './jev-usage-summary'
 
@@ -37,8 +37,9 @@ export async function setJevBalance(amount: string, directory = jevUsageDirector
     amountNanoUsd: amountNanoUsd.toString(),
     accountedRequestIds: usage.observedRequestIds
   })
-  await mkdir(directory, { recursive: true, mode: 0o700 })
-  writeFileAtomically(baselinePath(directory), `${JSON.stringify(baseline)}\n`, { mode: 0o600 })
+  if (!writeSecureJsonFile(baselinePath(directory), baseline)) {
+    throw new Error('BALANCE_PERMISSIONS_FAILED')
+  }
   return {
     status: 'calibrated',
     provenance: baseline.provenance,
