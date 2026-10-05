@@ -68,3 +68,22 @@ Before accepting a migration, use plain `orca` to register capacity evidence and
 perform a bounded governed dispatch with the existing canonical commands
 `orchestration run-capacity-record` and `orchestration worker-start`. Capacity and
 routing policy are unchanged by CLI alignment.
+
+## Installed desktop activation and smoke barrier
+
+After local promotion, finish quitting the old MK process before replacing the
+bundle. Launch the installed desktop normally with `open "/Applications/Orca MK.app"`.
+Do not leave `ORCA_BACKGROUND_LAUNCH=1` on the installed user-facing process:
+that explicit automation setting suppresses presentation and subsequent reveals,
+while the process still owns the profile's single-instance lock. A second launch
+is not a way to remove that setting from an existing process; quit that MK instance
+and launch normally. Do not bypass the lock or migrate profiles to reveal a window.
+
+Before a governed smoke, complete all promotion/restart commands, verify the
+expected installed build and bundled CLI with `orca doctor --json`, verify a visible
+main window, then recheck that the same runtimeId is ready immediately before
+dispatch. Do not quit, kill, promote or restart MK until the bounded worker has
+settled and been released. A runtimeId change or pending teardown invalidates the
+checkpoint: inspect the existing attempt rather than retrying or retargeting it.
+Normal duplicate activation uses the existing main-window reuse/reopen path.
+Keep background launch for explicit automated checks only.
