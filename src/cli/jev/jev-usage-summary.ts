@@ -22,14 +22,18 @@ const Record = z.object({
       .nullable()
   })
 })
-export async function summarizeJevUsage(directory = jevUsageDirectory()) {
+export async function summarizeJevUsage(
+  directory = jevUsageDirectory(),
+  excludedRequestIds: readonly string[] = [],
+  withRequestIds = false
+) {
   let calls = 0
   let rejectedRecords = 0
   let inputTokens = 0n
   let outputTokens = 0n
   let nanoUsd = 0n
   let unpricedCalls = 0
-  const seen = new Set<string>()
+  const seen = new Set<string>(excludedRequestIds)
   let files: string[]
   try {
     files = await readdir(directory)
@@ -85,6 +89,7 @@ export async function summarizeJevUsage(directory = jevUsageDirectory()) {
     outputTokens: outputTokens.toString(),
     estimatedCostUsd: `${nanoUsd / 1_000_000_000n}.${String(nanoUsd % 1_000_000_000n).padStart(9, '0')}`,
     unpricedCalls,
+    ...(withRequestIds ? { observedRequestIds: [...seen] } : {}),
     balance: 'NOT_AUTOMATED',
     source: 'locally_observed_jev_tool_calls'
   }

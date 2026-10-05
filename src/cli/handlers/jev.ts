@@ -5,6 +5,7 @@ import type { CommandHandler } from '../dispatch'
 import { decideWithJev, JEV_MAX_BYTES } from '../jev/system-one-decision'
 import { readJevCredential } from '../jev/jev-credentials'
 import { recordJevUsage } from '../jev/jev-usage-record'
+import { setJevBalance, readJevBalance } from '../jev/jev-balance'
 import { summarizeJevUsage } from '../jev/jev-usage-summary'
 
 async function readInput(path: string | undefined): Promise<unknown> {
@@ -71,7 +72,9 @@ const decide: CommandHandler = async ({ flags }) => {
 }
 const usage: CommandHandler = async () => {
   try {
-    process.stdout.write(`${JSON.stringify(await summarizeJevUsage())}\n`)
+    process.stdout.write(
+      `${JSON.stringify({ ...(await summarizeJevUsage()), calibratedBalance: await readJevBalance() })}\n`
+    )
   } catch {
     process.stdout.write(
       `${JSON.stringify({
@@ -85,5 +88,19 @@ const usage: CommandHandler = async () => {
 }
 export const JEV_HANDLERS: Record<string, CommandHandler> = {
   'jev decide': decide,
-  'jev usage': usage
+  'jev usage': usage,
+  'jev balance set': async ({ flags }) => {
+    try {
+      const amount = flags.get('amount')
+      if (typeof amount !== 'string') {
+        throw new Error('INVALID_BALANCE_AMOUNT')
+      }
+      process.stdout.write(`${JSON.stringify(await setJevBalance(amount))}\n`)
+    } catch {
+      process.stdout.write(
+        `${JSON.stringify({ status: 'failed', retryable: false, error: { code: 'BALANCE_CALIBRATION_FAILED' } })}\n`
+      )
+      process.exitCode = 1
+    }
+  }
 }

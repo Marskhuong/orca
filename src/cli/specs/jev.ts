@@ -2,6 +2,15 @@ import type { CommandSpec } from '../args'
 import { GLOBAL_FLAGS } from '../args'
 export const JEV_COMMAND_SPECS: CommandSpec[] = [
   {
+    path: ['jev', 'balance', 'set'],
+    summary: 'Calibrate current Jev USD balance; subsequent tracked spend is deducted',
+    usage: 'orca jev balance set --amount <USD> [--json]',
+    allowedFlags: ['help', 'json', 'amount'],
+    notes: [
+      'Manual calibration, not provider-authoritative. Establishes a new accounting baseline without historical double-counting.'
+    ]
+  },
+  {
     path: ['jev', 'usage'],
     summary: 'Read locally observed Jev tool usage and estimated cost',
     usage: 'orca jev usage [--json]',

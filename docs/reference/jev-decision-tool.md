@@ -74,6 +74,43 @@ usage. Orca Meter is unchanged: Jev is absent from route/capacity snapshots and 
 balance endpoint is invented. Remaining balance is `NOT_AUTOMATED`; account credit
 balance requires the supported account/console interface.
 
+### Manual balance calibration
+
+```sh
+orca jev balance set --amount 10.00 --json
+orca jev usage
+```
+
+Enter the current USD balance shown in the TypeSafe console, including after a top-up.
+The owner-readable `balance-baseline.state` stores this manual value and the identities
+of journal records already present. Footer `U` is estimated tracked spend from records
+added after calibration; `R` is the calibrated value minus that spend. Recalibration
+starts `U` at zero and excludes historical records without deleting lifetime usage.
+An in-flight call recorded after calibration counts as subsequent spend. External calls,
+unrecorded calls and provider pricing differences can make this estimate diverge from
+the console; recalibrate to correct it. Negative remaining values are not clamped.
+
+`jev usage` reports this separately as `calibratedBalance` with `manual_calibrated`
+provenance. Missing or invalid baselines and unpriced/malformed accounting records hide
+the footer balance rather than fabricate a value. No provider balance API is claimed,
+and calibration performs no inference or credential lookup.
+
+### Compact footer
+
+Quota footer percentages always mean remaining, while detailed views retain their
+display preference. Real 5-hour and weekly windows render as `5h 60% · 2h15m | W 59%
+· 4d20h`; missing windows or reset timestamps have no placeholder. For independent
+Antigravity pools, the footer shows only the pool containing the highest-consumed
+window. Stable `P1`/`P2` indices follow sorted pool names; full names and all pools remain
+in details. Windows from different pools are never combined.
+
+DeepSeek `U` and `R` read the existing local Orca Meter USD ledger: used is opening
+balance plus additions minus the last observed remaining balance (floored at zero,
+matching Meter). The observation timestamp remains available in details. Jev uses the
+manual calibration above. Both format USD to two decimals and share the existing
+collapse/refresh surface. Missing Meter data is hidden; the renderer makes no duplicate
+provider request.
+
 ## Suggested future policy wording
 
 Before dispatching an LLM solely for a bounded structured decision, consider this

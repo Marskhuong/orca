@@ -1,3 +1,4 @@
+import type { FooterBalance } from '../../shared/footer-balance-types'
 import { ipcRenderer } from 'electron'
 import type {
   CodexRateLimitResetResult,
@@ -7,6 +8,8 @@ import type {
 import type { PreloadApi } from '../api-types'
 
 export const rateLimitsApi = {
+  getFooterBalances: (): Promise<FooterBalance[]> =>
+    ipcRenderer.invoke('rateLimits:getFooterBalances'),
   get: (): Promise<RateLimitState> => ipcRenderer.invoke('rateLimits:get'),
   refresh: (): Promise<RateLimitState> => ipcRenderer.invoke('rateLimits:refresh'),
   refreshCodexForTarget: (target: RateLimitRuntimeTarget): Promise<RateLimitState> =>

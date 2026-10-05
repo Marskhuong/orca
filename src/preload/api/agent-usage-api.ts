@@ -1,3 +1,4 @@
+import type { FooterBalance } from '../../shared/footer-balance-types'
 import type { ClaudeUsageBreakdownKind, ClaudeUsageSnapshot } from '../../shared/claude-usage-types'
 import type { CodexUsageBreakdownKind, CodexUsageSnapshot } from '../../shared/codex-usage-types'
 import type {
@@ -48,6 +49,7 @@ export type OpenCodeUsageApi = UsageProviderApi<OpenCodeUsageSnapshot, OpenCodeU
 export type MuseUsageApi = UsageProviderApi<MuseUsageSnapshot, MuseUsageBreakdownKind>
 
 export type RateLimitsApi = {
+  getFooterBalances?: () => Promise<FooterBalance[]>
   get: () => Promise<RateLimitState>
   refresh: () => Promise<RateLimitState>
   refreshCodexForTarget: (target: RateLimitRuntimeTarget) => Promise<RateLimitState>

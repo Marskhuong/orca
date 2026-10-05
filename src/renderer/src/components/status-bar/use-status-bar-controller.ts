@@ -1,3 +1,4 @@
+import { useFooterBalances } from './use-footer-balances'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShortcutLabel } from '@/hooks/useShortcutLabel'
 import { useAppStore } from '../../store'
@@ -14,6 +15,7 @@ import { useStatusBarDensity } from './status-bar-density'
 export function useStatusBarController(floatingTerminalOpen: boolean) {
   const floatingTerminalShortcut = useShortcutLabel('floatingTerminal.toggle')
   const rateLimits = useAppStore((s) => s.rateLimits)
+  const footerBalances = useFooterBalances(rateLimits)
   const settings = useAppStore((s) => s.settings)
   const refreshRateLimits = useAppStore((s) => s.refreshRateLimits)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
@@ -164,6 +166,7 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     floatingTerminalEnabled && floatingTerminalTriggerLocation === 'status-bar'
   // Why: meter-only children (excludes resource-usage) so the % display callout anchors to a real meter cluster.
   const hasVisibleUsageMeters =
+    footerBalances.length > 0 ||
     showClaude ||
     showCodex ||
     showGemini ||
@@ -176,10 +179,12 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     showZcode
   const anyVisible = hasVisibleUsageMeters || showResourceUsage
   // Why: include Settings so durable managed accounts count — a configured user isn't shown the empty state while snapshots hydrate.
-  const isEmptyUsageState = isUsageEmptyState(
-    { claude, codex, gemini, opencodeGo, kimi, antigravity, minimax, grok, cursor, zcode },
-    usageSettings
-  )
+  const isEmptyUsageState =
+    footerBalances.length === 0 &&
+    isUsageEmptyState(
+      { claude, codex, gemini, opencodeGo, kimi, antigravity, minimax, grok, cursor, zcode },
+      usageSettings
+    )
   // Why: one-time nudge — once dismissed, stays hidden even if providers reconnect later.
   const showEmptyUsageCta = isEmptyUsageState && !usageEmptyStateDismissed
   const anyFetching =
@@ -265,6 +270,7 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     petEnabled,
     recordFeatureInteraction,
     rosterProviders,
+    footerBalances,
     segmentsIconOnly,
     segmentsRef,
     setMenuOpen,

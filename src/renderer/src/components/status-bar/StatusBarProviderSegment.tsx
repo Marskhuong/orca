@@ -1,3 +1,5 @@
+import { footerQuotaText } from './footer-quota-format'
+import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import { AlertTriangle } from 'lucide-react'
 import React from 'react'
 import type { ProviderRateLimits, RateLimitWindow } from '../../../../shared/rate-limit-types'
@@ -91,11 +93,15 @@ export function getUsageTone(p: ProviderRateLimits): UsageTone {
  * Stands in for usage chips a narrow bar can't fit. Always rendered at the collapsing
  * density so its width is known before anything collapses; out of the row while empty.
  */
+const NO_HIDDEN_BALANCES: string[] = []
+
 export function UsageOverflowChip({
   hidden,
-  display
+  display,
+  extraHidden = NO_HIDDEN_BALANCES
 }: {
   hidden: readonly ProviderRateLimits[]
+  extraHidden?: string[]
   display: UsagePercentageDisplay
 }): React.JSX.Element {
   const tones = hidden.map(getUsageTone)
@@ -116,19 +122,19 @@ export function UsageOverflowChip({
   return (
     <span
       data-usage-more
-      data-usage-collapsed={hidden.length === 0}
+      data-usage-collapsed={hidden.length + extraHidden.length === 0}
       data-tone={tone}
-      aria-hidden={hidden.length === 0}
+      aria-hidden={hidden.length + extraHidden.length === 0}
       title={translate(
         'auto.components.status.bar.StatusBar.hiddenUsageProviders',
         'Also: {{value0}}',
         {
-          value0: names
+          value0: [names, ...extraHidden].filter(Boolean).join(', ')
         }
       )}
       className="inline-flex h-4 items-center rounded-full border border-border px-1.5 text-[11px] font-medium tabular-nums text-foreground data-[tone=urgent]:border-destructive/40 data-[tone=urgent]:text-destructive data-[tone=warning]:border-status-warning-border data-[tone=warning]:text-status-warning data-[usage-collapsed=true]:invisible data-[usage-collapsed=true]:absolute"
     >
-      +{Math.max(1, hidden.length)}
+      +{Math.max(1, hidden.length + extraHidden.length)}
     </span>
   )
 }
@@ -266,13 +272,24 @@ export function ProviderSegment({
   p,
   compact,
   display,
-  mode = 'verbose'
+  mode = 'verbose',
+  footer = false
 }: {
   p: ProviderRateLimits | null
   compact: boolean
   display: UsagePercentageDisplay
   mode?: StatusBarUsageMode
+  footer?: boolean
 }): React.JSX.Element {
+  const now = useResetCountdownClock(
+    footer && p
+      ? [
+          p.session?.resetsAt,
+          p.weekly?.resetsAt,
+          ...(p.buckets?.map((bucket) => bucket.resetsAt) ?? [])
+        ]
+      : []
+  )
   const provider = p?.provider ?? 'claude'
   const statusLabel = p ? getProviderUsageStatusLabel(p) : ''
 
@@ -324,7 +341,9 @@ export function ProviderSegment({
   return (
     <span className="inline-flex items-center gap-1.5">
       <ProviderIcon provider={provider} />
-      {mode === 'verbose' ? (
+      {footer ? (
+        <span className="tabular-nums">{footerQuotaText(p, now)}</span>
+      ) : mode === 'verbose' ? (
         <>
           {tightest && !compact ? (
             <MiniBar usedPct={clampUsedPercent(tightest.window.usedPercent)} display={display} />

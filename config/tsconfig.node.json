@@ -14,7 +14,14 @@
     "../src/preload/**/*",
     "../src/shared/**/*",
     "../src/relay/**/*",
-    "../src/types/**/*"
+    "../src/types/**/*",
+    "../src/cli/jev/jev-balance.ts",
+    "../src/cli/jev/jev-usage-record.ts",
+    "../src/cli/jev/jev-usage-summary.ts",
+    "../src/cli/jev/system-one-decision.ts",
+    "../src/cli/jev/system-one-contract.ts",
+    "../src/cli/runtime/metadata.ts",
+    "../src/cli/runtime/types.ts"
   ],
   "compilerOptions": {
     "composite": true,

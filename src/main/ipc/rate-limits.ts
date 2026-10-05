@@ -1,3 +1,5 @@
+import type { FooterBalance } from '../../shared/footer-balance-types'
+import { readFooterBalances } from '../rate-limits/footer-balances'
 import { ipcMain } from 'electron'
 import type { RateLimitService } from '../rate-limits/service'
 import type { RateLimitRuntimeTarget } from '../../shared/rate-limit-types'
@@ -7,6 +9,13 @@ export function registerRateLimitHandlers(
   rateLimits: RateLimitService,
   codexAccounts: CodexAccountService
 ): void {
+  let footerRead: Promise<FooterBalance[]> | undefined
+  ipcMain.handle('rateLimits:getFooterBalances', () => {
+    footerRead ??= readFooterBalances().finally(() => {
+      footerRead = undefined
+    })
+    return footerRead
+  })
   ipcMain.handle('rateLimits:get', () => rateLimits.getState())
   ipcMain.handle('rateLimits:refresh', () => rateLimits.refresh())
   ipcMain.handle('rateLimits:refreshCodexForTarget', (_event, target: RateLimitRuntimeTarget) =>

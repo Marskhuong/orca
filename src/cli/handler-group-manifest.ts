@@ -14,7 +14,7 @@ export type HandlerGroup = {
 export const HANDLER_GROUPS: readonly HandlerGroup[] = [
   {
     name: 'jev',
-    keys: ['jev decide', 'jev usage'],
+    keys: ['jev decide', 'jev usage', 'jev balance set'],
     load: async () => (await import('./handlers/jev.js')).JEV_HANDLERS
   },
   {

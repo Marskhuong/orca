@@ -4,6 +4,9 @@ const FILE_OPEN_FOCUS_HELP =
 
 /** Per-command flag help, kept out of the shared help chain it would crowd. */
 const COMMAND_SCOPED_FLAG_HELP: Record<string, Record<string, string>> = {
+  'jev balance set': {
+    amount: '--amount <USD>         Current manual Jev balance (nonnegative, at most two decimals)'
+  },
   'skills get': {
     full: '--full                 Print the full guide with bundled references',
     reference: '--reference <name>     Print one bundled reference by name',

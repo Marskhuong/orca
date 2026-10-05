@@ -1,3 +1,9 @@
+import {
+  FooterBalanceSegment,
+  balanceText,
+  balanceDetail,
+  balanceUrgent
+} from './FooterBalanceSegment'
 import { PanelsTopLeft, RefreshCw } from 'lucide-react'
 import React from 'react'
 import { lazyWithRetry } from '@/lib/lazy-with-retry'
@@ -77,6 +83,7 @@ export function StatusBarSurface({
     overflowing,
     petEnabled,
     rosterProviders,
+    footerBalances,
     segmentsIconOnly,
     segmentsRef,
     setMenuOpen,
@@ -152,14 +159,36 @@ export function StatusBarSurface({
                       >
                         <ProviderSegment
                           p={p}
+                          footer
                           compact={compact}
                           display={usagePercentageDisplay}
                           mode={usageTightestOnly ? 'compact' : statusBarUsageMode}
                         />
                       </span>
                     ))}
+                    {footerBalances.map((balance) => (
+                      <span
+                        key={balance.provider}
+                        data-usage-chip={`balance:${balance.provider}`}
+                        data-usage-urgent={balanceUrgent(balance)}
+                        data-usage-collapsed={collapsedUsageProviders.includes(
+                          `balance:${balance.provider}`
+                        )}
+                        aria-hidden={collapsedUsageProviders.includes(
+                          `balance:${balance.provider}`
+                        )}
+                        className="inline-flex data-[usage-collapsed=true]:invisible data-[usage-collapsed=true]:absolute"
+                      >
+                        <FooterBalanceSegment balance={balance} />
+                      </span>
+                    ))}
                     {collapseUsage ? (
                       <UsageOverflowChip
+                        extraHidden={footerBalances
+                          .filter((balance) =>
+                            collapsedUsageProviders.includes(`balance:${balance.provider}`)
+                          )
+                          .map((balance) => `${balance.provider} ${balanceText(balance)}`)}
                         hidden={rosterProviders.filter((p) =>
                           collapsedUsageProviders.includes(p.provider)
                         )}
@@ -180,6 +209,17 @@ export function StatusBarSurface({
                   onPointerDownOutside={usageMenuFocusHandoff.onPointerDownOutside}
                   onCloseAutoFocus={usageMenuFocusHandoff.onCloseAutoFocus}
                 >
+                  {footerBalances.map((balance) => (
+                    <div
+                      key={balance.provider}
+                      className="px-3 py-2 text-xs border-b border-border"
+                    >
+                      <div className="font-medium">
+                        {balance.provider === 'jev' ? 'Jev' : 'DeepSeek'} {balanceText(balance)}
+                      </div>
+                      <div className="text-muted-foreground">{balanceDetail(balance)}</div>
+                    </div>
+                  ))}
                   <UsageRosterPanel
                     providers={rosterProviders}
                     display={usagePercentageDisplay}
