@@ -23,6 +23,12 @@ export type RuntimeGraphStatus = 'ready' | 'reloading' | 'unavailable'
 
 export type RuntimeDesktopWindowStatus = 'available' | 'openable' | 'initializing' | 'blocked'
 
+export type RuntimeDesktopWindowState = {
+  visibility: 'absent' | 'hidden' | 'visible' | 'focused'
+  minimized: boolean
+  windowId: number | null
+}
+
 export const HEADLESS_RUNTIME_WINDOW_ID = 0
 
 export type DeviceScope = 'mobile' | 'runtime'
@@ -72,6 +78,7 @@ export type RuntimeStatus = {
   graphStatus: RuntimeGraphStatus
   authoritativeWindowId: number | null
   desktopWindowStatus?: RuntimeDesktopWindowStatus
+  desktopWindowState?: RuntimeDesktopWindowState
   liveTabCount: number
   liveLeafCount: number
   runtimeProtocolVersion?: number

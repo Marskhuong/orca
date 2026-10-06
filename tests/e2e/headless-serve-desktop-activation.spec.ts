@@ -47,6 +47,7 @@ function createHeadlessLaunchIsolation(userDataDir: string): ElectronHomeIsolati
     inheritedEnv: cleanEnv,
     launchEnv: {
       NODE_ENV: 'development',
+      ORCA_BACKGROUND_LAUNCH: '1',
       ORCA_E2E_HEADLESS: '1',
       // Why: production builds always use the lock; this opt-in makes the dev
       // E2E bundle exercise the same second-instance ownership path.
@@ -113,8 +114,73 @@ async function waitForProcessExit(child: ChildProcess, timeoutMs: number): Promi
 
 test.describe.configure({ mode: 'serial' })
 
+test('macOS background second instance leaves the headless owner windowless', async (// oxlint-disable-next-line no-empty-pattern -- This test owns its isolated singleton launches.
+{}, testInfo) => {
+  test.skip(process.platform !== 'darwin')
+  const mainPath = path.join(process.cwd(), 'out', 'main', 'index.js')
+  const userDataDir = mkdtempSync(path.join(os.tmpdir(), 'orca-e2e-serve-background-'))
+  const isolation = createHeadlessLaunchIsolation(userDataDir)
+  let owner: ElectronApplication | null = null
+  let background: ChildProcess | null = null
+  try {
+    owner = await electron.launch({
+      args: [...getOrcaElectronLaunchArgs(mainPath, false), '--serve', '--serve-no-pairing'],
+      env: Object.fromEntries(
+        Object.entries(isolation.env).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined
+        )
+      )
+    })
+    forwardElectronProcessLogs(owner, testInfo)
+    const client = new RuntimeClient(userDataDir, 5_000)
+    await expect
+      .poll(
+        async () => {
+          try {
+            return (await client.getCliStatus()).result.app.desktopWindowStatus
+          } catch (error) {
+            if (error instanceof RuntimeClientError && error.code === 'runtime_unavailable') {
+              return 'starting'
+            }
+            throw error
+          }
+        },
+        { timeout: 60_000 }
+      )
+      .toBe('openable')
+    const before = (await client.call<RuntimeStatus>('status.get')).result
+    expect(await owner.evaluate(({ app }) => app.listenerCount('second-instance'))).toBe(1)
+    background = spawn(electronPath, getOrcaElectronLaunchArgs(mainPath, false), {
+      env: isolation.env,
+      stdio: 'ignore'
+    })
+    expect(await waitForProcessExit(background, 10_000)).toBe(true)
+    expect(background.exitCode).toBe(3)
+    const after = (await client.call<RuntimeStatus>('status.get')).result
+    expect(after.runtimeId).toBe(before.runtimeId)
+    expect(after.desktopWindowStatus).toBe('openable')
+    expect(await owner.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(
+      0
+    )
+  } finally {
+    if (background && background.exitCode === null) {
+      background.kill('SIGKILL')
+      await waitForProcessExit(background, 5_000)
+    }
+    if (owner) {
+      await closeElectronAppForE2E(owner)
+    }
+    await cleanupE2EDaemons(userDataDir)
+    rmSync(userDataDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
+  }
+})
+
 test('promotes the headless owner without replacing its daemon terminal', async (// oxlint-disable-next-line no-empty-pattern -- This lifecycle test owns both launches and intentionally opts out of the default app fixture.
 {}, testInfo) => {
+  test.skip(
+    process.platform === 'darwin' && process.env.ORCA_MACOS_REOPEN_ACCEPTANCE !== '1',
+    'Explicit native promotion requires the authorized macOS acceptance display'
+  )
   const repoPath = readFileSync(TEST_REPO_PATH_FILE, 'utf8').trim()
   if (!repoPath || !existsSync(repoPath)) {
     test.skip(true, 'Global setup did not produce a seeded test repo')
@@ -136,7 +202,9 @@ test('promotes the headless owner without replacing its daemon terminal', async 
   try {
     serveApp = await electron.launch({
       args: [...getOrcaElectronLaunchArgs(mainPath, false), '--serve', '--serve-no-pairing'],
-      env
+      env: Object.fromEntries(
+        Object.entries(env).filter((entry): entry is [string, string] => entry[1] !== undefined)
+      )
     })
     const resolvedHome = await serveApp.evaluate(({ app }) => app.getPath('home'))
     assertElectronResolvedIsolatedHome(resolvedHome, homeIsolation)
@@ -200,7 +268,10 @@ test('promotes the headless owner without replacing its daemon terminal', async 
 
     const forwardAppLogs = process.env.ORCA_E2E_FORWARD_APP_LOGS === '1'
     activatingProcess = spawn(electronPath, getOrcaElectronLaunchArgs(mainPath, false), {
-      env,
+      env:
+        process.platform === 'darwin'
+          ? { ...env, ORCA_BACKGROUND_LAUNCH: '0', ORCA_E2E_FOREGROUND: '1' }
+          : env,
       stdio: forwardAppLogs ? 'pipe' : 'ignore'
     })
     activatingProcess.on('error', (error) => {

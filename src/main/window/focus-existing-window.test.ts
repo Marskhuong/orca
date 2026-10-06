@@ -363,3 +363,80 @@ describe('focusExistingMainWindow', () => {
     expect(warn).toHaveBeenCalledTimes(3)
   })
 })
+
+describe('explicit reopen of an existing background singleton', () => {
+  it.each([{ visible: false }, { minimized: true }])(
+    'reveals and focuses %j without replacing the window',
+    (state) => {
+      vi.stubEnv('ORCA_BACKGROUND_LAUNCH', '1')
+      const window = makeFakeWindow(state)
+      const app = {
+        ...makeFakeApp(),
+        setActivationPolicy: vi.fn(),
+        dock: { show: vi.fn(async () => undefined) }
+      }
+      const openWindow = vi.fn()
+      focusExistingMainWindow({
+        app,
+        getWindow: () => window,
+        openWindow,
+        platform: 'darwin',
+        userInitiated: true
+      })
+      expect(openWindow).not.toHaveBeenCalled()
+      expect(window.calls.show).toHaveBeenCalledOnce()
+      expect(window.calls.focus).toHaveBeenCalledOnce()
+      expect(window.calls.restore).toHaveBeenCalledTimes('minimized' in state ? 1 : 0)
+      expect(app.setActivationPolicy).toHaveBeenCalledWith('regular')
+      expect(app.dock.show).toHaveBeenCalledOnce()
+      expect(app.focus).toHaveBeenCalledWith({ steal: true })
+      expect(process.env.ORCA_BACKGROUND_LAUNCH).toBe('1')
+    }
+  )
+})
+
+it.each(['win32', 'linux'] as const)(
+  'ignores the macOS user override on %s, including delayed Windows focus',
+  (platform) => {
+    vi.stubEnv('ORCA_BACKGROUND_LAUNCH', '1')
+    const app = makeFakeApp()
+    const window = makeFakeWindow({ minimized: true })
+    const timer = makeTimer()
+    focusExistingMainWindow({
+      app,
+      getWindow: () => window,
+      openWindow: vi.fn(),
+      platform,
+      userInitiated: true,
+      setTimeout: timer.setTimeout
+    })
+    timer.run(100)
+    expect(app.focus).not.toHaveBeenCalled()
+    for (const call of Object.values(window.calls)) {
+      expect(call).not.toHaveBeenCalled()
+    }
+    expect(timer.scheduledMs()).toEqual([])
+  }
+)
+
+it('retains baseline Windows foreground reinforcement and delayed focus', () => {
+  const app = makeFakeApp()
+  const window = makeFakeWindow()
+  const timer = makeTimer()
+  focusExistingMainWindow({
+    app,
+    getWindow: () => window,
+    openWindow: vi.fn(),
+    platform: 'win32',
+    userInitiated: true,
+    setTimeout: timer.setTimeout
+  })
+  expect(window.calls.moveTop).toHaveBeenCalledOnce()
+  expect(window.calls.setAlwaysOnTop).toHaveBeenCalledWith(true)
+  timer.run(100)
+  expect(app.focus).toHaveBeenCalledTimes(2)
+  expect(window.calls.show).toHaveBeenCalledTimes(2)
+  expect(window.calls.focus).toHaveBeenCalledTimes(2)
+  timer.run(250)
+  expect(window.calls.setAlwaysOnTop).toHaveBeenLastCalledWith(false)
+})

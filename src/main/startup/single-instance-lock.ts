@@ -1,3 +1,4 @@
+import { isBackgroundLaunch } from '../window/foreground-activation-policy'
 import type { App } from 'electron'
 import { argvRequestsServeMode } from './serve-mode-argv'
 import { writeStartupDiagnosticLine, type StartupDiagnosticSink } from './startup-diagnostics'
@@ -39,12 +40,28 @@ export function shouldActivateDesktopForSecondInstance(argv: readonly string[] =
  */
 export function acquireSingleInstanceLock(
   app: App,
-  onSecondInstance: (argv: readonly string[]) => void
+  onSecondInstance: (argv: readonly string[]) => void,
+  platform: NodeJS.Platform = process.platform
 ): boolean {
-  if (!app.requestSingleInstanceLock()) {
+  const acquired =
+    platform === 'darwin'
+      ? app.requestSingleInstanceLock({ orcaBackgroundLaunch: isBackgroundLaunch() })
+      : app.requestSingleInstanceLock()
+  if (!acquired) {
     return false
   }
-  app.on('second-instance', (_event, argv) => onSecondInstance(argv))
+  app.on('second-instance', (_event, argv, _directory, additionalData: unknown) => {
+    if (
+      platform === 'darwin' &&
+      additionalData &&
+      typeof additionalData === 'object' &&
+      'orcaBackgroundLaunch' in additionalData &&
+      additionalData.orcaBackgroundLaunch === true
+    ) {
+      return
+    }
+    onSecondInstance(argv)
+  })
   return true
 }
 

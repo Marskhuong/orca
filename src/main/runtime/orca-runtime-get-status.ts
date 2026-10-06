@@ -140,6 +140,9 @@ export class OrcaRuntimeWithGetStatus extends OrcaRuntimeWithGetRuntimeId {
       graphStatus: this.graphStatus,
       authoritativeWindowId: this.authoritativeWindowId,
       desktopWindowStatus: hasRenderer ? 'available' : this.getDesktopWindowStatusFn(),
+      ...(this.getDesktopWindowStateFn
+        ? { desktopWindowState: this.getDesktopWindowStateFn() }
+        : {}),
       liveTabCount: this.tabs.size,
       liveLeafCount: this.leaves.size,
       runtimeProtocolVersion: RUNTIME_PROTOCOL_VERSION,

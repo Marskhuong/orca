@@ -5,6 +5,7 @@ import {
   RUNTIME_GRAPH_RELOAD_TIMEOUT_MS,
   electronMocks
 } from '../orca-runtime-test-mocks.spec'
+import type { RuntimeDesktopWindowState } from '../../../shared/runtime-types'
 import type { WorkspaceSessionState } from '../orca-runtime-test-mocks.spec'
 import {
   HEADLESS_LEAF_ID,
@@ -142,6 +143,31 @@ describe('OrcaRuntimeService', () => {
       activeConnectionIdsAtShutdown: ['ssh-1'],
       remoteSessionIdsByTabId: { 'host-tab': remotePtyId }
     })
+  })
+
+  it('adds live window visibility without changing legacy availability or runtime identity', () => {
+    electronMocks.BrowserWindow.fromId.mockImplementation((windowId: number) =>
+      windowId === TEST_WINDOW_ID ? ({ isDestroyed: () => false } as never) : null
+    )
+    let state: RuntimeDesktopWindowState = {
+      visibility: 'hidden',
+      minimized: false,
+      windowId: TEST_WINDOW_ID
+    }
+    const runtime = new OrcaRuntimeService(store, undefined, { getDesktopWindowState: () => state })
+    runtime.attachWindow(TEST_WINDOW_ID)
+    runtime.markGraphReady(TEST_WINDOW_ID)
+    const id = runtime.getRuntimeId()
+    expect(runtime.getStatus()).toMatchObject({
+      desktopWindowStatus: 'available',
+      desktopWindowState: state
+    })
+    state = { visibility: 'focused', minimized: false, windowId: TEST_WINDOW_ID }
+    expect(runtime.getStatus().desktopWindowState).toEqual(state)
+    state = { visibility: 'absent', minimized: false, windowId: null }
+    expect(runtime.getStatus().desktopWindowState).toEqual(state)
+    expect(runtime.getRuntimeId()).toBe(id)
+    expect(createRuntime().getStatus()).not.toHaveProperty('desktopWindowState')
   })
 
   it('reports the activation gate state while no desktop window is available', () => {

@@ -10,20 +10,22 @@ type FocusTimer = (callback: () => void, ms: number) => unknown
 export type FocusExistingMainWindowResult = 'focused' | 'opened' | 'pending'
 
 export type FocusExistingMainWindowOptions = {
-  app: Pick<App, 'focus' | 'isReady'>
+  app: Pick<App, 'focus' | 'isReady'> &
+    Partial<Pick<App, 'setActivationPolicy'>> & { dock?: Pick<NonNullable<App['dock']>, 'show'> }
   getWindow: () => BrowserWindow | null
   openWindow: () => BrowserWindow
   /** False while some other path must own the first window; the reopen is dropped, not queued. */
   canOpenWindow?: () => boolean
+  userInitiated?: boolean
   platform?: NodeJS.Platform
   setTimeout?: FocusTimer
   warn?: (message: string, error?: unknown) => void
 }
 
-function safelyFocusApp(app: Pick<App, 'focus'>): void {
+function safelyFocusApp(app: Pick<App, 'focus'>, userInitiated = false): void {
   // Why: stealing the foreground is the whole point of this path for a real
   // second-instance launch, and exactly what an automated run must never do.
-  if (isBackgroundLaunch()) {
+  if (isBackgroundLaunch() && !userInitiated) {
     return
   }
   try {
@@ -37,15 +39,19 @@ function safelyFocusApp(app: Pick<App, 'focus'>): void {
   }
 }
 
-export function safelyRevealWindow(window: BrowserWindow): void {
-  if (window.isDestroyed() || isWindowlessLaunch()) {
+export function safelyRevealWindow(window: BrowserWindow, userInitiated = false): void {
+  if (window.isDestroyed() || (isWindowlessLaunch() && !userInitiated)) {
     return
   }
   if (window.isMinimized()) {
     window.restore()
   }
-  showWindowWithoutStealingFocus(window)
-  if (!isBackgroundLaunch()) {
+  if (userInitiated) {
+    window.show()
+  } else {
+    showWindowWithoutStealingFocus(window)
+  }
+  if (userInitiated || !isBackgroundLaunch()) {
     window.focus()
   }
 }
@@ -82,12 +88,18 @@ function retryFocus(window: BrowserWindow, app: Pick<App, 'focus'>, setTimer: Fo
 // drift on win32 reinforcement (moveTop/pulseAlwaysOnTop) or the 100ms focus retry.
 function activateWindow(
   window: BrowserWindow,
-  app: Pick<App, 'focus'>,
+  app: FocusExistingMainWindowOptions['app'],
   platform: NodeJS.Platform,
-  setTimer: FocusTimer
+  setTimer: FocusTimer,
+  userInitiated = false
 ): void {
-  safelyFocusApp(app)
-  safelyRevealWindow(window)
+  const macUserReopen = platform === 'darwin' && userInitiated
+  if (macUserReopen) {
+    app.setActivationPolicy?.('regular')
+    void app.dock?.show().catch(() => undefined)
+  }
+  safelyFocusApp(app, macUserReopen)
+  safelyRevealWindow(window, macUserReopen)
   // Why: moveTop/always-on-top/refocus are foreground reinforcement; in a
   // background launch they would drag the window over the developer's work.
   if (platform === 'win32' && !isBackgroundLaunch()) {
@@ -109,7 +121,10 @@ const REOPEN_MAX_ATTEMPTS = 3
 const REOPEN_RETRY_DELAY_MS = 300
 
 function openWindowWithRetry(
-  opts: Pick<FocusExistingMainWindowOptions, 'app' | 'getWindow' | 'openWindow' | 'warn'>,
+  opts: Pick<
+    FocusExistingMainWindowOptions,
+    'app' | 'getWindow' | 'openWindow' | 'warn' | 'userInitiated'
+  >,
   platform: NodeJS.Platform,
   setTimer: FocusTimer,
   attempt: number
@@ -133,7 +148,7 @@ function openWindowWithRetry(
           ? existing
           : openWindowWithRetry(opts, platform, setTimer, attempt + 1)
       if (window) {
-        activateWindow(window, opts.app, platform, setTimer)
+        activateWindow(window, opts.app, platform, setTimer, opts.userInitiated)
       }
     }, REOPEN_RETRY_DELAY_MS)
     return null
@@ -159,6 +174,6 @@ export function focusExistingMainWindow(
     openedWindow = true
   }
 
-  activateWindow(window, opts.app, platform, setTimer)
+  activateWindow(window, opts.app, platform, setTimer, opts.userInitiated)
   return openedWindow ? 'opened' : 'focused'
 }

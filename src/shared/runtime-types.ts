@@ -113,6 +113,7 @@ export type {
   DeviceScope,
   RuntimeBrowserDriverState,
   RuntimeDesktopWindowStatus,
+  RuntimeDesktopWindowState,
   RuntimeGraphStatus,
   RuntimeMobileSessionAgentTab,
   RuntimeMobileSessionBrowserTab,

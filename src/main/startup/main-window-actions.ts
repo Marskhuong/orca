@@ -33,6 +33,7 @@ export function setMainWindowOpener(
 export function focusExistingWindow(): void {
   focusExistingMainWindow({
     app,
+    userInitiated: process.platform === 'darwin',
     getWindow: () => state.mainWindow,
     openWindow,
     // Why: a 20s blank launch invites a second double-click, and icacls is rewriting
@@ -43,12 +44,16 @@ export function focusExistingWindow(): void {
 }
 
 export function showMainWindowFromTray(): void {
-  if (state.mainWindow && !state.mainWindow.isDestroyed()) {
+  if (process.platform !== 'darwin' && state.mainWindow && !state.mainWindow.isDestroyed()) {
     safelyRevealWindow(state.mainWindow)
     return
   }
   if (!isQuittingForUpdate()) {
-    openWindow()
+    if (process.platform === 'darwin') {
+      focusExistingWindow()
+    } else {
+      openWindow()
+    }
   }
 }
 

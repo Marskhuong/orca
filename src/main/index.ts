@@ -83,7 +83,6 @@ function publishOsOpenedMarkdownFiles(): void {
 }
 
 const handleMacAppActivation = createMacAppActivationHandler({
-  getWindow: () => state.mainWindow,
   requestActivation: requestDesktopActivation
 })
 

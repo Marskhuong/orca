@@ -53,7 +53,8 @@ vi.mock('electron', () => ({
   dialog: { showMessageBox: mocks.showMessageBox }
 }))
 vi.mock('../window/foreground-activation-policy', () => ({
-  applyBackgroundActivationPolicy: mocks.background
+  applyBackgroundActivationPolicy: mocks.background,
+  isBackgroundLaunch: () => true
 }))
 vi.mock('node:fs', async (original) => {
   const fs = await original<typeof NodeFs>()

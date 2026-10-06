@@ -206,3 +206,31 @@ describe('logSingleInstanceLockBypass', () => {
     expect(write.mock.calls[0]?.[1]).toContain('bypassing the packaged macOS single-instance lock')
   })
 })
+
+it('passes background intent across singleton launches and leaves a healthy foreground window untouched', () => {
+  const fake = makeFakeApp(true)
+  const onSecondInstance = vi.fn()
+  acquireSingleInstanceLock(fake.app, onSecondInstance, 'darwin')
+  fake.listeners['second-instance'][0]({}, ['/app/Orca'], '/workspace', {
+    orcaBackgroundLaunch: true
+  })
+  expect(onSecondInstance).not.toHaveBeenCalled()
+  fake.listeners['second-instance'][0]({}, ['/app/Orca'], '/workspace', {
+    orcaBackgroundLaunch: false
+  })
+  expect(onSecondInstance).toHaveBeenCalledOnce()
+})
+
+it.each(['win32', 'linux'] as const)(
+  'preserves baseline singleton invocation on %s',
+  (platform) => {
+    const fake = makeFakeApp(true)
+    const onSecondInstance = vi.fn()
+    acquireSingleInstanceLock(fake.app, onSecondInstance, platform)
+    expect(fake.requestSingleInstanceLock).toHaveBeenCalledWith()
+    fake.listeners['second-instance'][0]({}, ['/app/Orca'], '/workspace', {
+      orcaBackgroundLaunch: true
+    })
+    expect(onSecondInstance).toHaveBeenCalledWith(['/app/Orca'])
+  }
+)
