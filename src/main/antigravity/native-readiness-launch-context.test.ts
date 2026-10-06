@@ -1,3 +1,4 @@
+import * as commandPath from '../ipc/command-path-resolver'
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -51,6 +52,7 @@ describe('native bound AGY launch context', () => {
   })
   afterEach(async () => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
     await rm(fixture.home, { recursive: true, force: true })
   })
   function args() {
@@ -108,16 +110,56 @@ describe('native bound AGY launch context', () => {
       )
     ).rejects.toThrow()
   })
+  it('accepts the captured 1.2.17 digest and binds it separately from 1.2.14', async () => {
+    const before = await observe()
+    const after = await resolveNativeAntigravityReadinessContext(
+      args(),
+      async () => '132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292611'
+    )
+    expect(after.fingerprint).not.toBe(before.fingerprint)
+    expect(after.launchConfig).toEqual(before.launchConfig)
+  })
+  it.each([
+    'future-digest',
+    '132ef8e1',
+    '132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292610'
+  ])('refuses unapproved digest %s', async (binary) => {
+    await expect(
+      resolveNativeAntigravityReadinessContext(args(), async () => binary)
+    ).rejects.toMatchObject({ readiness: 'UNKNOWN', reason: 'unsupported_binary' })
+  })
+
+  it('uses unsupported_context only for a host the native adapter cannot support', async () => {
+    vi.stubGlobal('process', { ...process, platform: 'linux' })
+    await expect(observe()).rejects.toMatchObject({
+      reason: 'unsupported_context',
+      readiness: 'UNKNOWN'
+    })
+  })
+  it('reports a missing executable without attempting credential observation', async () => {
+    vi.spyOn(commandPath, 'resolveCommandOnLocalPath').mockResolvedValueOnce(null)
+    await expect(observe()).rejects.toMatchObject({
+      reason: 'missing_executable',
+      readiness: 'NOT_READY'
+    })
+  })
+
   it('refuses missing auth, a selected-account mismatch and an unaudited executable', async () => {
     fixture.credential = null
-    await expect(observe()).rejects.toThrow()
+    await expect(observe()).rejects.toMatchObject({
+      reason: 'missing_consumer_identity',
+      readiness: 'NOT_READY'
+    })
     fixture.credential = credential()
     fixture.selected = 'other'
-    await expect(observe()).rejects.toThrow()
+    await expect(observe()).rejects.toMatchObject({
+      reason: 'selected_account_mismatch',
+      readiness: 'NOT_READY'
+    })
     fixture.selected = ''
     await expect(
       resolveNativeAntigravityReadinessContext(args(), async () => 'changed')
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({ reason: 'unsupported_binary', readiness: 'UNKNOWN' })
   })
   it('binds runtime, Run generation, target, and configuration', async () => {
     const before = await observe()

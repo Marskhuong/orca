@@ -10,14 +10,14 @@ The runtime has no canonical, bounded, read-only probe that proves a new AGY
 worker's operational readiness before allocation. Until that authority exists,
 these sources cannot justify fresh `READY` for a governed route.
 
-| Existing source | What it establishes | Why it cannot authorize a new worker |
-| --- | --- | --- |
-| `src/main/preflight/agent-detection.ts` and `src/relay/preflight-handler.ts` | Executable discovery on the selected host, with some version probes | Presence and version do not observe authentication or provider operation. |
-| `src/main/antigravity/native-account-service.ts`, `prepareForLaunch` | A selected credential still matches the native credential storage | No provider request validates the credential; reconciliation can write the vault, so this is not a read-only readiness probe. |
-| `src/main/rate-limits/antigravity-usage-fetcher.ts` | A current AGY quota reply and classified quota/auth failures | `/usage` is capacity metadata, not a model execution readiness contract; unsupported behavior can interpret it as a model prompt. |
-| `src/main/runtime/agent-state-rules/antigravity.json` and `terminal wait --for tui-idle` | An existing PTY shows a quiet idle composer | This requires an allocated, running terminal and does not validate the provider behind the composer. |
-| Hook server agent-status store | Host-owned state of an existing agent | A status row is not an authenticated pre-allocation observation for another Run, target, or launch configuration. |
-| `src/main/runtime/orchestration/run-capacity-state.ts`, `requireRouteDispatchable` | The recorded route posture satisfies dispatch policy | The readiness value is supplied evidence; this gate does not discover or establish readiness. |
+| Existing source                                                                          | What it establishes                                                 | Why it cannot authorize a new worker                                                                                              |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main/preflight/agent-detection.ts` and `src/relay/preflight-handler.ts`             | Executable discovery on the selected host, with some version probes | Presence and version do not observe authentication or provider operation.                                                         |
+| `src/main/antigravity/native-account-service.ts`, `prepareForLaunch`                     | A selected credential still matches the native credential storage   | No provider request validates the credential; reconciliation can write the vault, so this is not a read-only readiness probe.     |
+| `src/main/rate-limits/antigravity-usage-fetcher.ts`                                      | A current AGY quota reply and classified quota/auth failures        | `/usage` is capacity metadata, not a model execution readiness contract; unsupported behavior can interpret it as a model prompt. |
+| `src/main/runtime/agent-state-rules/antigravity.json` and `terminal wait --for tui-idle` | An existing PTY shows a quiet idle composer                         | This requires an allocated, running terminal and does not validate the provider behind the composer.                              |
+| Hook server agent-status store                                                           | Host-owned state of an existing agent                               | A status row is not an authenticated pre-allocation observation for another Run, target, or launch configuration.                 |
+| `src/main/runtime/orchestration/run-capacity-state.ts`, `requireRouteDispatchable`       | The recorded route posture satisfies dispatch policy                | The readiness value is supplied evidence; this gate does not discover or establish readiness.                                     |
 
 The quota command is version-fenced at AGY 1.1.11, bounded by a 30-second process
 timeout, and latched off after a model-turn response. Those safeguards are useful
@@ -89,13 +89,13 @@ is `7dca095cfc1df2c057a385ed88a76c7ba98dc103258a80be87a8f42e484cb3aa`.
 Function names come from its Go function table; addresses below are unslid
 virtual addresses, inspected with LLDB without launching the executable.
 
-| Installed function | Evidence |
-| --- | --- |
-| `entrypoints.modelsRun.run`, `0x102737750` | Reads backend state and calls `classifyModels`; the model-list output carries no auth-method, freshness, or request identity. |
-| `entrypoints.classifyModels`, `0x102737bd0` | Checks startup/auth state and `AuthStatus.EligibilityError`, then returns a nonempty model list; no live-response provenance check is present in this classifier. |
-| `codeassistclient.(*CodeAssistClient).fetchAvailableModels`, `0x1017ce7d0` | The `gemini_api_key` branch calls `geminimodels.Catalog` at `0x1017ce850` and returns with no error; the `adc` branch calls `buildDefaultAvailableModels` at `0x1017ce8fc` and returns with no error, before the HTTP branch. The `gateway` branch calls `buildGatewayAvailableModels` at `0x1017cebd0`. |
-| `codeassistclient.(*CodeAssistClient).FetchAvailableModels`, `0x1017d09d0` | Reads `Cache.Get`; this accessor itself does not force a new request. |
-| `codeassistclient.(*CodeAssistClient).GetFetchAvailableModelsResponse`, `0x1017cec50` | Conditionally calls `Cache.ClearAndRefresh`, then `Cache.Get`; a model result by itself does not identify which path supplied it. |
+| Installed function                                                                    | Evidence                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entrypoints.modelsRun.run`, `0x102737750`                                            | Reads backend state and calls `classifyModels`; the model-list output carries no auth-method, freshness, or request identity.                                                                                                                                                                            |
+| `entrypoints.classifyModels`, `0x102737bd0`                                           | Checks startup/auth state and `AuthStatus.EligibilityError`, then returns a nonempty model list; no live-response provenance check is present in this classifier.                                                                                                                                        |
+| `codeassistclient.(*CodeAssistClient).fetchAvailableModels`, `0x1017ce7d0`            | The `gemini_api_key` branch calls `geminimodels.Catalog` at `0x1017ce850` and returns with no error; the `adc` branch calls `buildDefaultAvailableModels` at `0x1017ce8fc` and returns with no error, before the HTTP branch. The `gateway` branch calls `buildGatewayAvailableModels` at `0x1017cebd0`. |
+| `codeassistclient.(*CodeAssistClient).FetchAvailableModels`, `0x1017d09d0`            | Reads `Cache.Get`; this accessor itself does not force a new request.                                                                                                                                                                                                                                    |
+| `codeassistclient.(*CodeAssistClient).GetFetchAvailableModelsResponse`, `0x1017cec50` | Conditionally calls `Cache.ClearAndRefresh`, then `Cache.Get`; a model result by itself does not identify which path supplied it.                                                                                                                                                                        |
 
 The static branches are concrete counterexamples to equating a model catalog
 with provider validation. The cache calls do not prove that the coordinator's
@@ -132,7 +132,6 @@ used the checked-in Node entry points directly, without native-runtime
 preparation. No new probe tests were added because no probe implementation was
 justified; timeout, receipt expiry/identity, remote capability, and duplicate
 probe evidence remain requirements for any future authoritative implementation.
-
 
 ## Exact-model bounded inference implementation (2026-10-05)
 
@@ -197,7 +196,6 @@ interaction and unrelated agents retain their existing behavior. The structured
 headless response is distinct from a terminal-screen heuristic; the existing
 captured idle detector is still used only after a supported worker starts.
 
-
 Public receipts contain readiness/reason, receipt id, timestamps, runtime host,
 exact model, cost flag, cache-hit status, and a small validated inference summary
 (model, SUCCESS, fixed response, usage counts, zero tool steps and duration).
@@ -246,3 +244,168 @@ killed a deliberately sleeping verification hook. Existing managed hooks keep th
 ten-second provider timeout, bounded stdin reader and 1.5-second curl timeout.
 This integration adds no new process, metadata read, bearer command-line argument,
 RPC surface or permission grant; sandbox and non-Antigravity behavior are unchanged.
+
+## DCS readiness audit (2026-10-06)
+
+The running local runtime is `1.4.214-local.1791214042527.0c0060bbb51c`,
+incarnation `62c1c4d8-9dc2-41e2-8aac-953d0b32eb46`. It advertises
+`orchestration.antigravity-readiness.v1`; this is not a missing bridge capability
+or missing AGY launcher. The current source and build already include bounded
+exact-model inference and governed native worker support.
+
+The installed `~/.local/bin/agy` reports `1.2.17` and SHA-256
+`132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292611`.
+The resolver accepts only the audited digest
+`7dca095cfc1df2c057a385ed88a76c7ba98dc103258a80be87a8f42e484cb3aa`.
+The running process has no observed alternate-provider/proxy environment selector;
+active profile settings have no proxy, AGY command/argument/environment override,
+or AGY disablement. Therefore the installed executable cannot pass the native
+resolver's binary check. Credentials and later configuration checks are not proven
+by this result and may expose further prerequisites after binary compatibility is
+established.
+
+The misleading `unsupported_context` originates in
+`observeAntigravityRunReadiness`: its catch previously collapsed every context
+resolution error to that reason. The RPC handler then published the collapsed
+reason as an UNKNOWN observation with no inference. The native context really is
+supported, but this binary has no approved readiness contract in the allowlist.
+
+### Existing flow
+
+1. The capacity bridge reads Meter once, optionally performs one bounded refresh,
+   and registers the Run handshake through `orchestration.runCapacityRecord`.
+   Capacity registration does not execute a provider readiness check.
+2. The coordinator explicitly invokes `run-capacity-record` with
+   `--agy-readiness-worktree` and `--agy-readiness-model gemini-3.8-flash-high`.
+   The CLI requires the host's advertised readiness capability.
+3. Runtime resolves an existing native workspace, Run generation, launcher,
+   pinned executable, consumer credential authority and configuration fingerprint.
+4. A supported context enters one bounded print inference. Strict stream parsing
+   requires the exact model, physical cwd, fixed response, completed causal steps,
+   positive usage, no tools, and verified process-group quiescence.
+5. Runtime stores private Run/context authority and publishes readiness into the
+   existing posture, without modifying availability.
+6. Worker start checks capacity, route identity and private receipt before
+   allocation. It requires the same exact model, existing workspace and fresh
+   context. Context is revalidated immediately before native PTY spawn.
+
+Claude, Codex and DeepSeek use coordinator-recorded bounded readiness evidence;
+this capacity layer does not implement equivalent provider probes for them.
+DeepSeek is a posture identity selected with an OpenCode mapping, not a separate
+built-in AGY provider. Antigravity uniquely requires runtime-owned positive
+receipt authority; caller-supplied READY is normalized to UNKNOWN.
+
+### Diagnostic correction
+
+Typed preflight failures now preserve fixed, nonsecret reasons through the posture
+and RPC response. Missing executable, canonical CLI path, verified consumer identity,
+selected-account agreement or startup plan is NOT_READY. Unsupported binary,
+launch configuration, environment, proxy, settings or configuration authority stays
+UNKNOWN with its specific reason. Truly unsupported execution hosts alone use
+`unsupported_context`. Unexpected I/O or other unclassified failures return
+`context_observation_failed`, without publishing exception messages or private paths.
+No preflight failure produces a receipt or enters inference.
+
+The executable allowlist, model, probe, receipt verification and dispatch gate are
+unchanged. This correction makes the refusal actionable; it does not restore support
+for the installed 1.2.17 binary. Adding that binary requires a fresh contract audit,
+independent review under CANON-R014, and a disposable governed positive smoke.
+A model listing, version string, hash computation or available quota is insufficient.
+
+### Evidence lifetime
+
+Receipts last 120 seconds, checked against wall and monotonic clocks, scoped to the
+Run, consumer generation, runtime incarnation and exact launch fingerprint.
+Reconnect to the same runtime does not renew them. Runtime/app restart removes
+private authority; persisted READY is normalized to UNKNOWN. Executable, account,
+credential authority, launcher, workspace or configuration changes invalidate matching
+launch authority. The probe process must already be quiescent before READY, so no
+long-running probe provider process survives as readiness authority.
+
+Capacity snapshot changes do not prove or disprove readiness. Public capacity
+registration strips AGY receipt claims; another explicit readiness request can
+restore a still-fresh matching cached receipt without inference. Failure observations
+are bounded and Run-scoped, not permanent provider state. No automatic retry or
+fallback was added; a future Run has independent evidence.
+
+### Disposable live checkpoint
+
+Run `run_80c6594abc78` was created for this audit. Its RUN_START handshake registered
+snapshot `5214eacc-3fa5-444f-81b7-df02a3258288`, with AGY AVAILABLE relayed from the
+user's statement. One existing-runtime readiness request returned UNKNOWN /
+`unsupported_context`, `inferenceMayConsumeTokens=false`. Worker enumeration returned
+zero workers. No worker was dispatched, no terminal was allocated and no provider
+inference ran. This is a reproduced refusal, not a successful launch smoke.
+
+The diagnostic source patch has not been installed or loaded into the live app.
+No app restart was performed. The DCS Run `run_8f2cb0843169` was inspected read-only;
+its work, posture, coordinator and worker assignments were not changed. No scoped
+Run-close command is exposed, so the empty disposable audit Run remains as evidence;
+the global reset command was not used.
+
+### Verification and remaining blocker
+
+Focused verification passed 228 distinct tests across 16 suites (the original
+11-suite selection, updated context/receipt suites, and five additional CLI,
+launch-transport, persistence and outcome-classification regression suites).
+Node and CLI typechecks, the changed-code quality gate and whitespace validation
+passed. The matrix, private receipt expiry/restart/identity checks, transient
+failure isolation, capacity handshake, PRESERVED, Yield Guard, unchanged existing
+provider paths and ambiguous worker outcomes remain covered. These are deterministic
+unit/integration results, not evidence of a live 1.2.17 governed launch.
+
+No compatible 1.2.17 binary receipt or independent compatibility review was obtained;
+the session exposes no governed Watchdog registration surface for reviewer dispatch.
+No direct provider or alternate agent launch was substituted. Restoration and the
+positive disposable worker smoke remain incomplete.
+
+```text
+AGY_READINESS_ROOT_CAUSE_IDENTIFIED=YES
+AGY_BOUNDED_READINESS_PROBE=FAIL
+AGY_GOVERNED_WORKER_LAUNCH=FAIL
+ROUTE_NOT_READY_GUARD_BYPASSED=NO
+AGY_READY_FOR_FUTURE_DCS_DISPATCH=NO
+```
+
+FAIL here means the installed-binary prerequisite prevented a positive probe/launch;
+no provider task failure or OUTCOME_UNKNOWN was inferred.
+
+## AGY 1.2.17 candidate certification and context binding
+
+The candidate additionally admits only the captured 1.2.17 SHA256
+`132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292611`;
+the actual digest remains part of the launch fingerprint. Other digests refuse
+with `unsupported_binary`, including later versions and modified audited binaries.
+The scrubbed headless fixture records one successful exact-model invocation,
+12,594 input tokens, 49 output tokens, no tools, clean exit and quiescent process
+group. This is parser/compatibility evidence, not an installed-runtime receipt.
+
+The context digest covers native global rules and skills, legacy `.agent`, and
+`AGENTS.md`, `GEMINI.md`, `.agents`, `.agent` and `.gemini` on the physical cwd's
+ancestor chain. It deliberately over-approximates discovery rather than assuming
+that a Git directory, Git worktree file, or folder boundary ends AGY discovery.
+Only named context locations are inspected; product trees and Git metadata are
+not crawled. At most 64 ancestor levels, 32 active dependency levels, 512 visited
+entries and 2 MiB total file content are permitted. Home `.gemini` provider state
+is excluded from ancestor recursion and its known configuration roots are bound
+separately, unless home itself is the launch cwd. Large or ambiguous contexts can
+therefore remain UNKNOWN even when the CLI could run manually.
+
+Explicit `@[label](path)` includes resolve relative to their source file, or from
+home for `~/`. Absolute paths are supported only without symlink components.
+Included files and nested includes share the same traversal limits. Strict
+`rules.json` entries/inheritance bind their referenced trees/manifests; full entry
+trees are hashed conservatively even when filters select less. Cycles, unsupported
+schema/path syntax, missing required targets and ambiguous bare `@filename`
+references refuse readiness rather than claiming an incomplete digest. The typed
+`unsupported_configuration_reference` reason maps to UNKNOWN. No content or
+private path is included in the public diagnostic.
+
+Configuration mutations are tested through the private runtime receipt gate as
+well as the digest. They reject dispatch without another inference or worker
+allocation. Probe deadlines, receipt lifetime, capacity separation, ownership,
+Yield Guard and OUTCOME_UNKNOWN behavior are unchanged. Installation and governed
+smoke remain gated on a new independent review with no blockers. The earlier
+claim that no governed Watchdog registration surface existed was a discovery gap:
+`orca-watchdog` is installed; the first review used it and reported two context
+binding blockers. Both are addressed by this candidate and require re-review.

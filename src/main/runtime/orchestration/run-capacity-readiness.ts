@@ -1,3 +1,4 @@
+import { AntigravityReadinessContextError } from '../../antigravity/readiness-context-error'
 import { performance } from 'node:perf_hooks'
 import { randomUUID } from 'node:crypto'
 import {
@@ -58,7 +59,13 @@ export async function observeAntigravityRunReadiness(args: {
   let context: NativeAntigravityReadinessContext
   try {
     context = await args.resolveContext()
-  } catch {
+  } catch (error) {
+    const readiness =
+      error instanceof AntigravityReadinessContextError ? error.readiness : 'UNKNOWN'
+    const reason =
+      error instanceof AntigravityReadinessContextError
+        ? error.reason
+        : 'context_observation_failed'
     if (args.db.getRunRaw(args.runId)?.consumer_generation !== generation) {
       throw new OrchestrationError('ROUTE_NOT_READY', 'Run changed during context observation.', {
         reason: 'identity_changed',
@@ -71,8 +78,8 @@ export async function observeAntigravityRunReadiness(args: {
       (entry) => entry.route_identity === 'antigravity'
     )
     if (route) {
-      route.readiness = 'UNKNOWN'
-      route.readiness_reason = 'unsupported_context'
+      route.readiness = readiness
+      route.readiness_reason = reason
       delete route.runtime_readiness_receipt_id
     }
     recordRunCapacity(args.db, args.runId, current)
@@ -80,8 +87,9 @@ export async function observeAntigravityRunReadiness(args: {
       'ROUTE_NOT_READY',
       'The requested Antigravity execution context could not be verified.',
       {
-        readiness: 'UNKNOWN',
-        reason: 'unsupported_context',
+        readiness,
+        reason,
+        inferenceMayConsumeTokens: false,
         effectsApplied: false,
         workerCreated: false
       }

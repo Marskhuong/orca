@@ -1,3 +1,4 @@
+import { AntigravityReadinessContextError } from '../../../../../antigravity/readiness-context-error'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../../../dispatcher'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
@@ -84,7 +85,7 @@ describe('capacity RPC boundaries and disposable Run smoke', () => {
     ).resolves.toMatchObject({
       readiness: {
         readiness: 'UNKNOWN',
-        reason: 'unsupported_context',
+        reason: 'context_observation_failed',
         inferenceMayConsumeTokens: false
       }
     })
@@ -92,6 +93,39 @@ describe('capacity RPC boundaries and disposable Run smoke', () => {
     expect(h.runtime.createTerminal).not.toHaveBeenCalled()
     expect(h.db.listTasks({ runId: h.activeRunId })).toEqual([])
   })
+  it.each([
+    ['unsupported_binary', 'UNKNOWN'],
+    ['unsupported_context', 'UNKNOWN'],
+    ['missing_consumer_identity', 'NOT_READY']
+  ] as const)(
+    'returns the %s preflight diagnosis in the RPC and posture',
+    async (reason, readiness) => {
+      recordRunCapacity(h.db, h.activeRunId, capacityEvidence())
+      vi.spyOn(h.runtime, 'resolveAntigravityReadinessContext').mockRejectedValue(
+        new AntigravityReadinessContextError(reason)
+      )
+      await expect(
+        h.call('orchestration.runCapacityRecord', {
+          id: h.activeRunId,
+          from: 'term_coord',
+          antigravityProbe: { worktree: 'id:repo::worktree', model: 'gemini-3.8-flash-high' }
+        })
+      ).resolves.toMatchObject({
+        readiness: { readiness, reason, inferenceMayConsumeTokens: false },
+        RUN_ROUTING_POSTURE: {
+          routes: expect.arrayContaining([
+            expect.objectContaining({
+              route_identity: 'antigravity',
+              readiness,
+              readiness_reason: reason
+            })
+          ])
+        }
+      })
+      expect(h.runtime.createTerminal).not.toHaveBeenCalled()
+      expect(h.db.listTasks({ runId: h.activeRunId })).toEqual([])
+    }
+  )
   it.each([false, true])(
     'refuses actual AGY terminal dispatch with inject=%s despite an explicit unrelated route',
     async (inject) => {

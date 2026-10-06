@@ -45,11 +45,17 @@ export const ORCHESTRATION_RUN_CAPACITY_METHODS = [
             ...readRunCapacity(db, run.id)
           }
         } catch (error) {
-          if (
-            !(error instanceof OrchestrationError) ||
-            error.code !== 'ROUTE_NOT_READY' ||
-            !z.object({ reason: z.literal('unsupported_context') }).safeParse(error.data).success
-          ) {
+          if (!(error instanceof OrchestrationError) || error.code !== 'ROUTE_NOT_READY') {
+            throw error
+          }
+          const preflight = z
+            .object({
+              readiness: z.enum(['UNKNOWN', 'NOT_READY']),
+              reason: z.string().min(1).max(512),
+              inferenceMayConsumeTokens: z.literal(false)
+            })
+            .safeParse(error.data)
+          if (!preflight.success) {
             throw error
           }
           const observedAt = Date.now()
@@ -57,8 +63,8 @@ export const ORCHESTRATION_RUN_CAPACITY_METHODS = [
             runId: run.id,
             recorded: true,
             readiness: {
-              readiness: 'UNKNOWN',
-              reason: 'unsupported_context',
+              readiness: preflight.data.readiness,
+              reason: preflight.data.reason,
               observedAt,
               expiresAt: observedAt,
               model: ANTIGRAVITY_READINESS_MODEL,

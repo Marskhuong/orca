@@ -22,6 +22,31 @@ describe('Antigravity headless readiness response', () => {
     })
   })
 
+  it('accepts the captured 1.2.17 exact-model no-tool response', () => {
+    const current = readFileSync(
+      join(__dirname, '__fixtures__', 'headless-ready-1-2-17.ndjson'),
+      'utf8'
+    )
+    expect(parseAntigravityReadinessResponse(current, '<workspace>')).toMatchObject({
+      accepted: true,
+      inferenceEvidence: {
+        model: 'gemini-3.8-flash-high',
+        status: 'SUCCESS',
+        response: 'AGY_READY_OK',
+        inputTokens: 12594,
+        outputTokens: 49,
+        totalTokens: 12643,
+        toolSteps: 0
+      }
+    })
+    expect(
+      parseAntigravityReadinessResponse(
+        current.replace('gemini-3.8-flash-high', 'future-model'),
+        '<workspace>'
+      )
+    ).toMatchObject({ accepted: false, reason: 'model_error' })
+  })
+
   it.each([
     ['model fallback', captured.replace('gemini-3.8-flash-high', 'gemini-3.8-flash-medium')],
     ['missing model', captured.replace('"model":"gemini-3.8-flash-high",', '')],

@@ -1,3 +1,4 @@
+import { AntigravityReadinessContextError } from '../antigravity/readiness-context-error'
 import {
   resolveNativeAntigravityReadinessContext,
   type NativeAntigravityReadinessContext
@@ -30,7 +31,7 @@ export async function resolveRuntimeAntigravityContext(args: {
 }) {
   const { run, workspace, db } = args
   if (workspace.connectionId || process.platform !== 'darwin') {
-    throw new Error('unsupported_execution_host')
+    throw new AntigravityReadinessContextError('unsupported_context')
   }
   const current = db.getRunRaw(run.id)
   if (
@@ -38,7 +39,7 @@ export async function resolveRuntimeAntigravityContext(args: {
     current.consumer_generation !== run.consumer_generation ||
     current.home_database !== 'this_database'
   ) {
-    throw new Error('identity_changed')
+    throw new AntigravityReadinessContextError('identity_changed')
   }
   const context = await resolveNativeAntigravityReadinessContext({
     runId: run.id,
@@ -56,7 +57,7 @@ export async function resolveRuntimeAntigravityContext(args: {
     }
   })
   if (db.getRunRaw(run.id)?.consumer_generation !== run.consumer_generation) {
-    throw new Error('identity_changed')
+    throw new AntigravityReadinessContextError('identity_changed')
   }
   return context
 }
@@ -72,12 +73,12 @@ export async function validateBoundAntigravitySpawn(
   }
   const run = runtime.getOrchestrationDb().getRunRaw(bound.runId)
   if (!run || run.consumer_generation !== bound.generation) {
-    throw new Error('identity_changed')
+    throw new AntigravityReadinessContextError('identity_changed')
   }
   const context = await runtime.resolveAntigravityReadinessContext(run, `id:${worktreeId}`)
   requireAntigravityRunReadiness(runtime.getOrchestrationDb(), run.id, context)
   if (context.fingerprint !== bound.fingerprint) {
-    throw new Error('identity_changed')
+    throw new AntigravityReadinessContextError('identity_changed')
   }
 }
 
@@ -94,18 +95,18 @@ export async function resolveBoundAntigravityLaunch(
     workspace.connectionId ||
     process.platform !== 'darwin'
   ) {
-    throw new Error('unsupported_execution_host')
+    throw new AntigravityReadinessContextError('unsupported_context')
   }
   if (!isTuiAgentEnabled('antigravity', settings.disabledTuiAgents)) {
     throw new Error('Antigravity is disabled')
   }
   const run = runtime.getOrchestrationDb().getRunRaw(bound.runId)
   if (!run || run.consumer_generation !== bound.generation) {
-    throw new Error('identity_changed')
+    throw new AntigravityReadinessContextError('identity_changed')
   }
   const current = await runtime.resolveAntigravityReadinessContext(run, `id:${workspace.id}`)
   if (current.fingerprint !== bound.fingerprint) {
-    throw new Error('identity_changed')
+    throw new AntigravityReadinessContextError('identity_changed')
   }
   return {
     ...opts,

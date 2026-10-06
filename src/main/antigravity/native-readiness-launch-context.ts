@@ -1,3 +1,4 @@
+import { AntigravityReadinessContextError } from './readiness-context-error'
 import { createHash } from 'node:crypto'
 import { lstat, readFile, realpath } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -14,7 +15,10 @@ import { antigravityConsumerAuthorityDigest } from './native-readiness-credentia
 import { buildNativeAntigravityReadinessLaunchCommand } from './native-readiness-launch-command'
 import { ANTIGRAVITY_READINESS_MODEL } from './headless-readiness-response'
 
-const AUDITED_BINARY = '7dca095cfc1df2c057a385ed88a76c7ba98dc103258a80be87a8f42e484cb3aa'
+const AUDITED_BINARIES = new Set([
+  '7dca095cfc1df2c057a385ed88a76c7ba98dc103258a80be87a8f42e484cb3aa',
+  '132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292611'
+])
 const MAX_BINARY_BYTES = 256 * 1024 * 1024
 export type NativeAntigravityReadinessContext = {
   runId: string
@@ -48,18 +52,18 @@ export async function resolveNativeAntigravityReadinessContext(
       .digest('hex')
 ): Promise<NativeAntigravityReadinessContext> {
   if (args.settings.httpProxyUrl?.trim()) {
-    throw new Error('unsupported_proxy')
+    throw new AntigravityReadinessContextError('unsupported_proxy')
   }
   const inherited = args.env ?? process.env
   if (process.platform !== 'darwin') {
-    throw new Error('Bound AGY readiness currently requires native macOS')
+    throw new AntigravityReadinessContextError('unsupported_context')
   }
   if (
     args.settings.agentDefaultArgs?.antigravity?.trim() ||
     args.settings.agentCmdOverrides?.antigravity ||
     Object.keys(args.settings.agentDefaultEnv?.antigravity ?? {}).length
   ) {
-    throw new Error('Bound AGY readiness does not support launcher or environment overrides')
+    throw new AntigravityReadinessContextError('unsupported_launch_configuration')
   }
   if (
     Object.entries(inherited).some(
@@ -70,7 +74,7 @@ export async function resolveNativeAntigravityReadinessContext(
         )
     )
   ) {
-    throw new Error('Bound AGY readiness does not support alternate provider or proxy environments')
+    throw new AntigravityReadinessContextError('unsupported_provider_environment')
   }
   const cwd = await realpath(args.cwd)
   const home = await realpath(args.home)
@@ -88,7 +92,7 @@ export async function resolveNativeAntigravityReadinessContext(
     resourcesPath: process.resourcesPath ?? null
   })
   if (!cli) {
-    throw new Error('unsupported_cli_path')
+    throw new AntigravityReadinessContextError('unsupported_cli_path')
   }
   env.ORCA_CLI_COMMAND = cli
   env.ORCA_USER_DATA_PATH = app.getPath('userData')
@@ -97,15 +101,19 @@ export async function resolveNativeAntigravityReadinessContext(
   if (program) {
     const binary = await lstat(program)
     if (!binary.isFile() || binary.size > MAX_BINARY_BYTES) {
-      throw new Error('unsupported_binary')
+      throw new AntigravityReadinessContextError('unsupported_binary')
     }
   }
-  if (!program || (await binaryDigest(program)) !== AUDITED_BINARY) {
-    throw new Error('Bound AGY readiness requires the audited executable')
+  if (!program) {
+    throw new AntigravityReadinessContextError('missing_executable')
+  }
+  const binary = await binaryDigest(program)
+  if (!AUDITED_BINARIES.has(binary)) {
+    throw new AntigravityReadinessContextError('unsupported_binary')
   }
   const credential = await createAntigravityHostCredentialBackend(home).read()
   if (credential?.authMethod !== 'consumer' || !credential.identity) {
-    throw new Error('Bound AGY readiness requires a verified native consumer account identity')
+    throw new AntigravityReadinessContextError('missing_consumer_identity')
   }
   const vault = createEncryptedAntigravityAccountStore(args.vaultPath).read()
   const selected = vault.accounts.find((account) => account.id === vault.selectedAccountId)
@@ -115,7 +123,7 @@ export async function resolveNativeAntigravityReadinessContext(
       selected.subject !== credential.identity.subject ||
       selected.authMethod !== credential.authMethod)
   ) {
-    throw new Error('Selected AGY account no longer matches the native credential')
+    throw new AntigravityReadinessContextError('selected_account_mismatch')
   }
   const configDigest = await antigravityConfigurationDigest(home, cwd)
   const plan = buildAgentStartupPlan({
@@ -130,7 +138,7 @@ export async function resolveNativeAntigravityReadinessContext(
     sessionOptionsOverrideAgentArgs: true
   })
   if (!plan) {
-    throw new Error('Bound AGY startup plan could not be resolved')
+    throw new AntigravityReadinessContextError('startup_plan_unavailable')
   }
   const command = buildNativeAntigravityReadinessLaunchCommand(plan.launchCommand, env, cwd)
   const fingerprint = createHash('sha256')
@@ -143,7 +151,7 @@ export async function resolveNativeAntigravityReadinessContext(
         cwd,
         program,
         env,
-        binary: AUDITED_BINARY,
+        binary,
         credential: antigravityConsumerAuthorityDigest(credential),
         account: selected?.id ?? null,
         configDigest,

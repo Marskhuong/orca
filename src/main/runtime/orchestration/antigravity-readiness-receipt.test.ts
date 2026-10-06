@@ -1,3 +1,4 @@
+import { AntigravityReadinessContextError } from '../../antigravity/readiness-context-error'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -44,6 +45,76 @@ describe('runtime-owned AGY readiness receipts', () => {
     recordRunCapacity(db, runId, capacityEvidence())
   })
   afterEach(() => db.close())
+
+  it.each([
+    ['missing_executable', 'NOT_READY'],
+    ['missing_consumer_identity', 'NOT_READY'],
+    ['selected_account_mismatch', 'NOT_READY'],
+    ['unsupported_binary', 'UNKNOWN'],
+    ['unsupported_settings', 'UNKNOWN'],
+    ['unsupported_context', 'UNKNOWN']
+  ] as const)(
+    'publishes %s without inference, allocation or capacity changes',
+    async (reason, readiness) => {
+      const before = readRunCapacity(db, runId)
+      const observe = vi.fn()
+      await expect(
+        observeAntigravityRunReadiness({
+          db,
+          runId,
+          observe,
+          resolveContext: async () => {
+            throw new AntigravityReadinessContextError(reason)
+          }
+        })
+      ).rejects.toMatchObject({
+        code: 'ROUTE_NOT_READY',
+        data: { readiness, reason, inferenceMayConsumeTokens: false, workerCreated: false }
+      })
+      expect(observe).not.toHaveBeenCalled()
+      expect(db.listTasks({ runId })).toEqual([])
+      const after = readRunCapacity(db, runId)
+      expect(
+        after?.RUN_ROUTING_POSTURE.routes.find((route) => route.route_identity === 'antigravity')
+      ).toMatchObject({ readiness, readiness_reason: reason })
+      expect(after?.RUN_ROUTING_POSTURE.routes.map((route) => route.availability)).toEqual(
+        before?.RUN_ROUTING_POSTURE.routes.map((route) => route.availability)
+      )
+      expect(() => requireAntigravityRunReadiness(db, runId, context)).toThrowError(
+        expect.objectContaining({ code: 'ROUTE_NOT_READY' })
+      )
+    }
+  )
+
+  it('redacts unexpected context errors and permits a later verified observation', async () => {
+    const observe = vi.fn(async () => ({
+      readiness: 'READY' as const,
+      reason: 'inference_completed'
+    }))
+    await expect(
+      observeAntigravityRunReadiness({
+        db,
+        runId,
+        observe,
+        resolveContext: async () => {
+          throw new Error('credential secret and private path')
+        }
+      })
+    ).rejects.toMatchObject({
+      data: { readiness: 'UNKNOWN', reason: 'context_observation_failed' }
+    })
+    expect(observe).not.toHaveBeenCalled()
+    expect(JSON.stringify(readRunCapacity(db, runId))).not.toContain('credential secret')
+    expect(
+      await observeAntigravityRunReadiness({
+        db,
+        runId,
+        observe,
+        resolveContext: async () => context
+      })
+    ).toMatchObject({ readiness: 'READY', cacheHit: false })
+    expect(observe).toHaveBeenCalledOnce()
+  })
 
   it('refuses caller READY without runtime authority and route laundering', () => {
     for (const request of [
@@ -116,6 +187,45 @@ describe('runtime-owned AGY readiness receipts', () => {
     expect(() => requireAntigravityRunReadiness(db, runId, context)).toThrowError(
       expect.objectContaining({ code: 'ROUTE_NOT_READY' })
     )
+  })
+
+  it('keeps a transient failure isolated from another Run', async () => {
+    const failed = vi.fn(async () => ({ readiness: 'UNKNOWN' as const, reason: 'timeout' }))
+    await observeAntigravityRunReadiness({
+      db,
+      runId,
+      resolveContext: async () => context,
+      observe: failed
+    })
+    const next = db.createRun({
+      objective: 'independent readiness',
+      coordinatorHandle: null,
+      coordinatorPaneKey: null
+    })
+    recordRunCapacity(db, next.id, capacityEvidence())
+    const verified = vi.fn(async () => ({
+      readiness: 'READY' as const,
+      reason: 'inference_completed'
+    }))
+    expect(
+      await observeAntigravityRunReadiness({
+        db,
+        runId: next.id,
+        resolveContext: async () => ({
+          ...context,
+          runId: next.id,
+          generation: next.consumer_generation
+        }),
+        observe: verified
+      })
+    ).toMatchObject({ readiness: 'READY', cacheHit: false })
+    expect(verified).toHaveBeenCalledOnce()
+    expect(
+      readRunCapacity(db, runId)?.RUN_ROUTING_POSTURE.routes.find(
+        (route) => route.route_identity === 'antigravity'
+      )
+    ).toMatchObject({ readiness: 'UNKNOWN', readiness_reason: 'timeout' })
+    expect(failed).toHaveBeenCalledOnce()
   })
 
   it('rejects a changed identity after the inference without a retry', async () => {
