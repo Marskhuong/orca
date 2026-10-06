@@ -2,6 +2,7 @@ import { AntigravityReadinessContextError } from './readiness-context-error'
 import { createHash } from 'node:crypto'
 import { lstat, readFile, readdir, realpath } from 'node:fs/promises'
 import { join, extname, dirname, basename, resolve, isAbsolute } from 'node:path'
+import { bindAntigravityContextReferences } from './native-readiness-references'
 
 const SETTINGS_KEYS = new Set([
   'agentMode',
@@ -88,70 +89,6 @@ export async function antigravityConfigurationDigest(home: string, cwd: string):
     }
     return target
   }
-  async function bindReferences(path: string, value: Buffer, referenced: boolean): Promise<void> {
-    if (basename(path) === 'rules.json') {
-      const manifest: unknown = JSON.parse(value.toString('utf8'))
-      if (
-        !manifest ||
-        typeof manifest !== 'object' ||
-        Array.isArray(manifest) ||
-        Object.keys(manifest).some((key) => key !== 'entries' && key !== 'inherits')
-      ) {
-        throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-      }
-      for (const [key, items] of Object.entries(manifest)) {
-        if (!Array.isArray(items)) {
-          throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-        }
-        for (const item of items) {
-          if (!item || typeof item !== 'object' || Array.isArray(item)) {
-            throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-          }
-          const fields: Record<string, unknown> = item
-          if (
-            typeof fields.path !== 'string' ||
-            Object.keys(fields).some(
-              (name) =>
-                name !== 'path' &&
-                (key === 'inherits' || !['exclude', 'include_only'].includes(name))
-            )
-          ) {
-            throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-          }
-          for (const name of ['exclude', 'include_only']) {
-            const filter = fields[name]
-            if (
-              filter !== undefined &&
-              (!Array.isArray(filter) || filter.some((entry) => typeof entry !== 'string'))
-            ) {
-              throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-            }
-          }
-          const target = await referencePath(fields.path, path)
-          if (key === 'inherits' && basename(target) !== 'rules.json') {
-            throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-          }
-          // Hash the whole entry tree so filters cannot hide a changing input.
-          await visit(target, true)
-        }
-      }
-    }
-    if (extname(path).toLowerCase() === '.md' || referenced) {
-      const source = value.toString('utf8')
-      const include = /@\[[^\]\r\n]*\]\(([^()\r\n]+)\)/g
-      const remaining = source.replace(include, '')
-      if (/@[^\s]/.test(remaining)) {
-        throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-      }
-      for (const match of source.matchAll(include)) {
-        const target = await referencePath(match[1], path)
-        if (!(await lstat(target)).isFile()) {
-          throw new AntigravityReadinessContextError('unsupported_configuration_reference')
-        }
-        await visit(target, true)
-      }
-    }
-  }
   async function visit(path: string, required = false): Promise<void> {
     if (!isAbsolute(path)) {
       throw new AntigravityReadinessContextError('unsupported_context')
@@ -159,7 +96,8 @@ export async function antigravityConfigurationDigest(home: string, cwd: string):
     if (active.has(path)) {
       throw new AntigravityReadinessContextError('unsupported_configuration_reference')
     }
-    if (completed.has(path)) {
+    const key = `${required ? 'referenced' : 'context'}:${path}`
+    if (completed.has(key)) {
       return
     }
     if (active.size >= 32) {
@@ -181,7 +119,7 @@ export async function antigravityConfigurationDigest(home: string, cwd: string):
         }
         hash.update('absent')
         active.delete(path)
-        completed.add(path)
+        completed.add(key)
         return
       }
       throw error
@@ -190,8 +128,25 @@ export async function antigravityConfigurationDigest(home: string, cwd: string):
       throw new AntigravityReadinessContextError('unsupported_configuration_symlink')
     }
     if (stat.isDirectory()) {
-      for (const name of (await readdir(path)).sort()) {
-        await visit(join(path, name))
+      const names = (await readdir(path)).sort()
+      if (names.length > 512) {
+        throw new AntigravityReadinessContextError('configuration_limit')
+      }
+      if (!required && basename(path) === 'skills') {
+        for (const name of names) {
+          const directory = join(path, name)
+          const child = await lstat(directory)
+          if (child.isSymbolicLink()) {
+            throw new AntigravityReadinessContextError('unsupported_configuration_symlink')
+          }
+          if (child.isDirectory()) {
+            await visit(join(directory, 'SKILL.md'))
+          }
+        }
+      } else {
+        for (const name of names) {
+          await visit(join(path, name), required)
+        }
       }
     } else if (stat.isFile()) {
       bytes += stat.size
@@ -225,13 +180,20 @@ export async function antigravityConfigurationDigest(home: string, cwd: string):
       ) {
         throw new AntigravityReadinessContextError('unsupported_provider_configuration')
       }
-      await bindReferences(path, value, required)
+      await bindAntigravityContextReferences({
+        path,
+        value,
+        referenced: required,
+        cwd,
+        referencePath,
+        visit
+      })
       hash.update(value)
     } else {
       throw new AntigravityReadinessContextError('unsupported_configuration_file')
     }
     active.delete(path)
-    completed.add(path)
+    completed.add(key)
   }
   for (const path of [
     join(root, 'settings.json'),

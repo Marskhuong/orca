@@ -64,6 +64,7 @@ describe('effective AGY configuration invalidates private readiness authority', 
     '.gemini/config/skills/global/SKILL.md',
     '.gemini/antigravity-cli/rules/native.md',
     '.gemini/antigravity-cli/skills/native/SKILL.md',
+    'referenced-bare',
     'referenced-include',
     'referenced-entry',
     'referenced-inheritance'
@@ -72,7 +73,9 @@ describe('effective AGY configuration invalidates private readiness authority', 
     const file = join(home, referenced ? 'external/rule.md' : relative)
     await mkdir(dirname(file), { recursive: true })
     await writeFile(file, 'initial context')
-    if (relative === 'referenced-include') {
+    if (relative === 'referenced-bare') {
+      await writeFile(join(cwd, 'AGENTS.md'), '@../external/rule.md')
+    } else if (relative === 'referenced-include') {
       await writeFile(join(cwd, 'AGENTS.md'), '@[external](../external/rule.md)')
     } else if (referenced) {
       await mkdir(join(cwd, '.agents'))
@@ -104,5 +107,24 @@ describe('effective AGY configuration invalidates private readiness authority', 
     )
     expect(observe).toHaveBeenCalledOnce()
     expect(db.listTasks({ runId })).toEqual([])
+  })
+  it('keeps a READY receipt across irrelevant helper changes, but not skill instruction changes', async () => {
+    const skill = join(home, '.agents/skills/example')
+    await mkdir(join(skill, 'scripts'), { recursive: true })
+    await writeFile(join(skill, 'SKILL.md'), 'initial instructions')
+    const observe = vi.fn(async () => ({
+      readiness: 'READY' as const,
+      reason: 'inference_completed'
+    }))
+    await observeAntigravityRunReadiness({ db, runId, resolveContext: context, observe })
+    await writeFile(join(skill, 'scripts/helper.mjs'), Buffer.alloc(2 * 1024 * 1024 + 1))
+    const unchanged = await context()
+    expect(requireAntigravityRunReadiness(db, runId, unchanged)).toBe(unchanged)
+    await writeFile(join(skill, 'SKILL.md'), 'changed instructions')
+    const changed = await context()
+    expect(() => requireAntigravityRunReadiness(db, runId, changed)).toThrowError(
+      expect.objectContaining({ code: 'ROUTE_NOT_READY' })
+    )
+    expect(observe).toHaveBeenCalledOnce()
   })
 })
