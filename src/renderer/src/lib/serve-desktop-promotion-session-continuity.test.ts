@@ -129,7 +129,6 @@ function bootHeadlessServeOwner(): {
       }
     },
     dockActivate: createMacAppActivationHandler({
-      getWindow: () => mainWindow,
       requestActivation: () => requestDesktopActivation(DESKTOP_RELAUNCH_ARGV)
     }),
     settle: (options) => settleServeDesktopActivation(gate, options)
