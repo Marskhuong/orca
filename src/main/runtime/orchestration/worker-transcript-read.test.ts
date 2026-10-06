@@ -34,6 +34,47 @@ describe('worker transcript reads', () => {
     await rm(directory, { recursive: true, force: true })
   })
 
+  it('reads the captured AGY response separately from the task prompt', async () => {
+    const rows = [
+      {
+        step_index: 0,
+        source: 'USER_EXPLICIT',
+        type: 'USER_INPUT',
+        status: 'DONE',
+        created_at: '2026-10-06T17:58:34Z',
+        content: '<USER_REQUEST>Compute 2+2</USER_REQUEST>'
+      },
+      {
+        step_index: 1,
+        source: 'MODEL',
+        type: 'PLANNER_RESPONSE',
+        status: 'DONE',
+        created_at: '2026-10-06T17:58:34Z',
+        content: 'AGY_SMOKE_OK 2+2=4',
+        thinking: 'private reasoning'
+      }
+    ]
+    await writeFile(transcriptPath, `${rows.map((row) => JSON.stringify(row)).join('\n')}\n`)
+    const result = await readWorkerTranscript({
+      agent: 'antigravity',
+      sessionId: 'exact',
+      transcriptPath
+    })
+    expect(result).toMatchObject({
+      ok: true,
+      limited: false,
+      messages: [
+        { role: 'user', blocks: [{ type: 'text', text: 'Compute 2+2' }] },
+        { role: 'assistant', blocks: [{ type: 'text', text: 'AGY_SMOKE_OK 2+2=4' }] }
+      ]
+    })
+    expect(JSON.stringify(result)).not.toContain('private reasoning')
+    expect(await readWorkerTranscript({ agent: 'antigravity', sessionId: 'exact' })).toMatchObject({
+      ok: false,
+      reason: 'transcript_missing'
+    })
+  })
+
   it('returns a bounded tail followed by new messages from the exact file', async () => {
     await writeFile(
       transcriptPath,

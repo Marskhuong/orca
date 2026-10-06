@@ -13,6 +13,7 @@ import {
   readInitialLocalWorkerTranscriptPage
 } from './worker-transcript-local-read'
 import { readRemoteWorkerTranscript } from './worker-transcript-remote-read'
+import { decodeAntigravityWorkerTranscriptLine } from './antigravity-worker-transcript'
 
 type WorkerTranscriptReadFailure = {
   ok: false
@@ -50,10 +51,13 @@ export async function readWorkerTranscript(args: {
   filesystemProvider?: IFilesystemProvider
 }): Promise<WorkerTranscriptReadResult> {
   const transcriptAgent = resolveNativeChatTranscriptAgent(args.agent)
-  if (!transcriptAgent) {
+  if (!transcriptAgent && args.agent !== 'antigravity') {
     return { ok: false, reason: 'provider_unsupported', warnings: [] }
   }
-  const decode = nativeChatLineDecoderForAgent(args.agent)
+  const decode =
+    args.agent === 'antigravity'
+      ? decodeAntigravityWorkerTranscriptLine
+      : nativeChatLineDecoderForAgent(args.agent)
   if (!decode) {
     return { ok: false, reason: 'provider_unsupported', warnings: [] }
   }
@@ -77,10 +81,15 @@ export async function readWorkerTranscript(args: {
     return page
   }
   try {
-    filePath = await resolveSessionFilePath(args.agent, args.sessionId, {
-      transcriptPath: args.transcriptPath,
-      wslDistro: args.wslDistro
-    })
+    filePath =
+      args.agent === 'antigravity'
+        ? args.wslDistro
+          ? null
+          : args.transcriptPath?.trim() || null
+        : await resolveSessionFilePath(args.agent, args.sessionId, {
+            transcriptPath: args.transcriptPath,
+            wslDistro: args.wslDistro
+          })
   } catch {
     return { ok: false, reason: 'transcript_unreadable', warnings: [] }
   }

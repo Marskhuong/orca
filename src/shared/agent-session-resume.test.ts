@@ -8,6 +8,18 @@ import {
 } from './agent-session-resume'
 
 describe('agent session resume metadata', () => {
+  it('retains the AGY hook-attested transcript with its conversation identity', () => {
+    expect(
+      extractAgentProviderSession('antigravity', {
+        conversationId: 'agy-conversation',
+        transcriptPath: '/hook/transcript.jsonl'
+      })
+    ).toEqual({
+      key: 'conversation_id',
+      id: 'agy-conversation',
+      transcriptPath: '/hook/transcript.jsonl'
+    })
+  })
   it('treats devin as a resumable TUI agent', () => {
     expect(isResumableTuiAgent('devin')).toBe(true)
   })

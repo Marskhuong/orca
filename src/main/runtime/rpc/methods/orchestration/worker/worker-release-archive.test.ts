@@ -17,6 +17,55 @@ describe('orchestration worker release archive', () => {
 
   afterEach(() => h.cleanup())
 
+  it('archives the AGY answer instead of the incomplete terminal and reads it after release', async () => {
+    h.setup()
+    const directory = await mkdtemp(join(tmpdir(), 'orca-agy-release-'))
+    const transcriptPath = join(directory, 'transcript.jsonl')
+    try {
+      await writeFile(
+        transcriptPath,
+        `${JSON.stringify({
+          step_index: 1,
+          source: 'MODEL',
+          type: 'PLANNER_RESPONSE',
+          status: 'DONE',
+          created_at: '2026-10-06T17:58:34Z',
+          content: 'AGY_SMOKE_OK 2+2=4'
+        })}\n`
+      )
+      vi.mocked(h.runtime.getExactWorkerProviderSession).mockReturnValue({
+        paneKey: 'pane-worker',
+        processIncarnation: 'runtime_test:term_worker:1',
+        connectionId: null,
+        agent: 'antigravity',
+        observedAt: Date.now(),
+        providerSession: { key: 'conversation_id', id: 'agy-exact', transcriptPath }
+      })
+      const { dispatchId } = await h.startSettledWorker()
+      await expect(
+        h.call('orchestration.workerRelease', { dispatch: dispatchId })
+      ).resolves.toMatchObject({
+        state: 'released',
+        archive: { source: 'transcript', status: 'captured' }
+      })
+      await rm(transcriptPath)
+      vi.mocked(h.runtime.readTerminal).mockClear()
+      await expect(
+        h.call('orchestration.workerRead', { dispatch: dispatchId })
+      ).resolves.toMatchObject({
+        archived: true,
+        source: 'transcript',
+        contentComplete: true,
+        transcript: {
+          messages: [{ role: 'assistant', blocks: [{ type: 'text', text: 'AGY_SMOKE_OK 2+2=4' }] }]
+        }
+      })
+      expect(h.runtime.readTerminal).not.toHaveBeenCalled()
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
   it('records an explicitly empty archive for an already-exited worker process', async () => {
     h.setup()
     const { dispatchId } = await h.startSettledWorker()
