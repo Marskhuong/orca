@@ -119,8 +119,18 @@ describe('native bound AGY launch context', () => {
     expect(after.fingerprint).not.toBe(before.fingerprint)
     expect(after.launchConfig).toEqual(before.launchConfig)
   })
+  it('accepts the captured 1.3.0 digest while binding a distinct executable identity', async () => {
+    const previous = await observe()
+    const current = await resolveNativeAntigravityReadinessContext(
+      args(),
+      async () => '0e895226cb31f3ca07c780fb1eb13356f74b2470d721d266363467289bb462fb'
+    )
+    expect(current.fingerprint).not.toBe(previous.fingerprint)
+    expect(current.launchConfig).toEqual(previous.launchConfig)
+  })
   it.each([
     'future-digest',
+    '0e895226cb31f3ca07c780fb1eb13356f74b2470d721d266363467289bb462fa',
     '132ef8e1',
     '132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292610'
   ])('refuses unapproved digest %s', async (binary) => {

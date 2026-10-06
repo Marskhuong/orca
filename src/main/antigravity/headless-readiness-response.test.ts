@@ -47,6 +47,35 @@ describe('Antigravity headless readiness response', () => {
     ).toMatchObject({ accepted: false, reason: 'model_error' })
   })
 
+  it('accepts the captured 1.3.0 exact-model no-tool response and rejects cwd/model drift', () => {
+    const current = readFileSync(
+      join(__dirname, '__fixtures__', 'headless-ready-1-3-0.ndjson'),
+      'utf8'
+    )
+    expect(parseAntigravityReadinessResponse(current, '<workspace>')).toMatchObject({
+      accepted: true,
+      inferenceEvidence: {
+        model: 'gemini-3.8-flash-high',
+        status: 'SUCCESS',
+        response: 'AGY_READY_OK',
+        inputTokens: 12590,
+        outputTokens: 55,
+        totalTokens: 12645,
+        toolSteps: 0
+      }
+    })
+    expect(parseAntigravityReadinessResponse(current, '<alias>')).toMatchObject({
+      accepted: false,
+      reason: 'identity_changed'
+    })
+    expect(
+      parseAntigravityReadinessResponse(
+        current.replace('gemini-3.8-flash-high', 'future-model'),
+        '<workspace>'
+      )
+    ).toMatchObject({ accepted: false, reason: 'model_error' })
+  })
+
   it.each([
     ['model fallback', captured.replace('gemini-3.8-flash-high', 'gemini-3.8-flash-medium')],
     ['missing model', captured.replace('"model":"gemini-3.8-flash-high",', '')],

@@ -17,7 +17,8 @@ import { ANTIGRAVITY_READINESS_MODEL } from './headless-readiness-response'
 
 const AUDITED_BINARIES = new Set([
   '7dca095cfc1df2c057a385ed88a76c7ba98dc103258a80be87a8f42e484cb3aa',
-  '132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292611'
+  '132ef8e1c0cba05e9a8259c4ee10ce30375ab93656bf71fa9ec255c7ba292611',
+  '0e895226cb31f3ca07c780fb1eb13356f74b2470d721d266363467289bb462fb'
 ])
 const MAX_BINARY_BYTES = 256 * 1024 * 1024
 export type NativeAntigravityReadinessContext = {
